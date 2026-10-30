@@ -393,76 +393,135 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(right: 14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(40),
-        onTap: () {
-          if (hasActiveStory) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => StoryViewerScreen(
-                  stories: myStories,
-                  currentUserId: user?.uid ?? '',
-                ),
-              ),
-            );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
-            );
-          }
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(2.5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: hasActiveStory
-                        ? const LinearGradient(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(40),
+                onTap: () {
+                  if (hasActiveStory) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StoryViewerScreen(
+                          stories: myStories,
+                          currentUserId: user?.uid ?? '',
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+                    );
+                  }
+                },
+                child: hasActiveStory
+                    ? Container(
+                        padding: const EdgeInsets.all(3.0),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
                             colors: [AppColors.gradientStart, AppColors.gradientEnd],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                          )
-                        : null,
-                    border: hasActiveStory ? null : Border.all(color: isDark ? AppColors.darkBorder : AppColors.border, width: 1.5),
-                  ),
-                  child: AvatarWidget(
-                    photoUrl: user?.photoUrl,
-                    name: user?.displayName ?? 'Tôi',
-                    radius: 28,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
+                          ),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark ? AppColors.darkSurface : Colors.white,
+                          ),
+                          child: AvatarWidget(
+                            photoUrl: user?.photoUrl,
+                            name: user?.displayName ?? 'Tôi',
+                            radius: 26,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark ? AppColors.darkBorder : AppColors.border,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: AvatarWidget(
+                          photoUrl: user?.photoUrl,
+                          name: user?.displayName ?? 'Tôi',
+                          radius: 28,
+                        ),
+                      ),
+              ),
+              // Nút thêm tin
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(3.5),
+                  decoration: BoxDecoration(
                     color: AppColors.primary,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? AppColors.darkSurface : Colors.white,
+                      width: 2,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                    ],
                   ),
                   child: const Icon(
                     Icons.add,
-                    size: 14,
+                    size: 13,
                     color: Colors.white,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              hasActiveStory ? 'Tin của bạn' : 'Tạo Story',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          hasActiveStory
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Tin của bạn',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(
+                  'Tạo Story',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+        ],
       ),
     );
   }

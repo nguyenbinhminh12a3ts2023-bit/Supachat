@@ -33,6 +33,8 @@ class StoryService {
     String backgroundColor = '#6C5CE7',
     MusicTrack? musicTrack,
     List<String> stickers = const [],
+    List<double> stickerPositionsX = const [],
+    List<double> stickerPositionsY = const [],
     double textPositionX = 0.0,
     double textPositionY = 0.0,
     int musicStartTime = 0,
@@ -45,7 +47,7 @@ class StoryService {
     String? userAvatar = user.photoURL;
 
     try {
-      final userDoc = await _firestore.collection('users').doc(user.uid).get().timeout(const Duration(seconds: 8));
+      final userDoc = await _firestore.collection('users').doc(user.uid).get().timeout(const Duration(seconds: 3));
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data != null) {
@@ -68,6 +70,8 @@ class StoryService {
       musicTrackArtist: musicTrack?.artist,
       musicTrackUrl: musicTrack?.audioUrl,
       stickers: stickers,
+      stickerPositionsX: stickerPositionsX,
+      stickerPositionsY: stickerPositionsY,
       textPositionX: textPositionX,
       textPositionY: textPositionY,
       musicStartTime: musicStartTime,
@@ -80,7 +84,7 @@ class StoryService {
     final docRef = await _firestore
         .collection('stories')
         .add(story.toMap(useServerTimestamp: true))
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 40));
     return docRef.id;
   }
 

@@ -36,7 +36,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
 
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
+      duration: const Duration(seconds: 30),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           _goToNextStory();
@@ -273,36 +273,36 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                 ),
               ),
 
-            // Stickers nếu có
+            // Stickers nếu có (Hiển thị đúng vị trí người dùng đã kéo thả)
             if (story.stickers.isNotEmpty)
-              Positioned(
-                top: 140,
-                left: 20,
-                right: 20,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: story.stickers.map((st) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white38),
+              ...story.stickers.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final st = entry.value;
+                final posX = idx < story.stickerPositionsX.length ? story.stickerPositionsX[idx] : 0.0;
+                final posY = idx < story.stickerPositionsY.length ? story.stickerPositionsY[idx] : (-0.4 + idx * 0.12).clamp(-0.8, 0.8);
+                return Align(
+                  alignment: Alignment(posX, posY),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white38),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+                      ],
+                    ),
+                    child: Text(
+                      st,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: Text(
-                        st,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
+                    ),
+                  ),
+                );
+              }),
 
             // Top Header: Progress bars & User Info
             SafeArea(
@@ -436,8 +436,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                                 style: const TextStyle(color: Colors.white, fontSize: 14),
                                 decoration: const InputDecoration(
                                   hintText: 'Gửi tin nhắn...',
-                                  hintStyle: TextStyle(color: Colors.white60, fontSize: 13),
+                                  hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
                                   border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  focusedErrorBorder: InputBorder.none,
+                                  disabledBorder: InputBorder.none,
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
                                   isDense: true,
                                 ),
                                 onSubmitted: (val) {

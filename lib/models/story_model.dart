@@ -13,6 +13,8 @@ class StoryModel {
   final String? musicTrackArtist;
   final String? musicTrackUrl;
   final List<String> stickers;
+  final List<double> stickerPositionsX;
+  final List<double> stickerPositionsY;
   final double textPositionX; // Tọa độ X (-1.0 đến 1.0)
   final double textPositionY; // Tọa độ Y (-1.0 đến 1.0)
   final int musicStartTime;   // Thời điểm bắt đầu phát nhạc (giây)
@@ -33,6 +35,8 @@ class StoryModel {
     this.musicTrackArtist,
     this.musicTrackUrl,
     this.stickers = const [],
+    this.stickerPositionsX = const [],
+    this.stickerPositionsY = const [],
     this.textPositionX = 0.0,
     this.textPositionY = 0.0,
     this.musicStartTime = 0,
@@ -72,6 +76,8 @@ class StoryModel {
       musicTrackArtist: data['musicTrackArtist'] as String?,
       musicTrackUrl: data['musicTrackUrl'] as String?,
       stickers: List<String>.from(data['stickers'] as List? ?? []),
+      stickerPositionsX: (data['stickerPositionsX'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
+      stickerPositionsY: (data['stickerPositionsY'] as List?)?.map((e) => (e as num).toDouble()).toList() ?? [],
       textPositionX: (data['textPositionX'] as num?)?.toDouble() ?? 0.0,
       textPositionY: (data['textPositionY'] as num?)?.toDouble() ?? 0.0,
       musicStartTime: (data['musicStartTime'] as num?)?.toInt() ?? 0,
@@ -94,6 +100,8 @@ class StoryModel {
       'musicTrackArtist': musicTrackArtist,
       'musicTrackUrl': musicTrackUrl,
       'stickers': stickers,
+      'stickerPositionsX': stickerPositionsX,
+      'stickerPositionsY': stickerPositionsY,
       'textPositionX': textPositionX,
       'textPositionY': textPositionY,
       'musicStartTime': musicStartTime,

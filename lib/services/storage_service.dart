@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -97,20 +98,42 @@ class StorageService {
     }
   }
 
+  /// Nén và giảm kích thước ảnh để đảm bảo an toàn dung lượng mạng và Firestore limit (<200KB)
+  static Future<Uint8List> safeOptimizeImageBytes(Uint8List rawBytes, {int targetWidth = 640}) async {
+    if (rawBytes.lengthInBytes <= 150 * 1024) {
+      return rawBytes;
+    }
+    try {
+      final codec = await ui.instantiateImageCodec(rawBytes, targetWidth: targetWidth);
+      final frame = await codec.getNextFrame();
+      final byteData = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData != null) {
+        final compressed = byteData.buffer.asUint8List();
+        if (compressed.lengthInBytes < rawBytes.lengthInBytes) {
+          return compressed;
+        }
+      }
+    } catch (e) {
+      debugPrint('Lưu ý nén ảnh: $e');
+    }
+    return rawBytes;
+  }
+
   /// Tải ảnh bài viết lên Firebase Storage dạng Bytes (Hỗ trợ tốt trên cả Web & Mobile)
   Future<String> uploadPostImageBytes({required Uint8List bytes}) async {
+    final optimizedBytes = await safeOptimizeImageBytes(bytes);
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final ref = _storage.ref().child('posts').child('$timestamp.jpg');
       final metadata = SettableMetadata(contentType: 'image/jpeg');
 
-      final uploadTask = await ref.putData(bytes, metadata).timeout(const Duration(seconds: 12));
+      final uploadTask = await ref.putData(optimizedBytes, metadata).timeout(const Duration(seconds: 12));
       final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 8));
       return downloadUrl;
     } catch (e) {
       debugPrint('Lưu ý upload ảnh lên Storage: $e');
-      // Trả về định dạng data URI an toàn nếu Firebase Storage quá giờ hoặc bị chặn CORS
-      return 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      // Trả về định dạng data URI an toàn (<250KB) nếu Firebase Storage quá giờ hoặc bị chặn CORS
+      return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
     }
   }
 

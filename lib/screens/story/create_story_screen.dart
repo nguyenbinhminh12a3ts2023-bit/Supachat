@@ -23,6 +23,12 @@ enum StoryTextStyle {
   const StoryTextStyle(this.label);
 }
 
+class StoryStickerItem {
+  final String text;
+  Offset offset;
+  StoryStickerItem({required this.text, this.offset = Offset.zero});
+}
+
 /// Màn hình Tạo Story 24h chuẩn giao diện Studio Facebook / Instagram
 /// - Bước 1: Màn hình chọn [Tạo tin có ảnh hoặc video] hoặc [Tạo tin dạng văn bản]
 /// - Bước 2A: Tạo tin văn bản với Trình xem trước (Live Preview), đổi phông chữ, bảng màu, thêm nhạc
@@ -48,7 +54,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   MusicTrack? _selectedMusic;
   int _musicStartSeconds = 0;
-  final List<String> _stickers = [];
+  final List<StoryStickerItem> _stickerItems = [];
   bool _isUploading = false;
 
   // Vị trí kéo thả của Text Box trên ảnh
@@ -157,9 +163,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         imageQuality: 60,
       );
       if (picked != null) {
-        final bytes = await picked.readAsBytes();
+        final rawBytes = await picked.readAsBytes();
+        final optimizedBytes = await StorageService.safeOptimizeImageBytes(rawBytes);
         setState(() {
-          _selectedImageBytes = bytes;
+          _selectedImageBytes = optimizedBytes;
           _photoRotation = 0;
           _mode = StoryCreationMode.photo;
         });
@@ -186,7 +193,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         _selectedImageBytes = null;
         _textController.clear();
         _selectedMusic = null;
-        _stickers.clear();
+        _stickerItems.clear();
         _photoRotation = 0;
         _textOffset = Offset.zero;
       });
@@ -234,7 +241,12 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   onPressed: () {
                     setState(() {
-                      if (!_stickers.contains(st)) _stickers.add(st);
+                      if (!_stickerItems.any((item) => item.text == st)) {
+                        _stickerItems.add(StoryStickerItem(
+                          text: st,
+                          offset: Offset(0, -60.0 + _stickerItems.length * 35.0),
+                        ));
+                      }
                     });
                     Navigator.pop(ctx);
                   },
@@ -528,12 +540,18 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       final posX = (halfWidth > 0 ? _textOffset.dx / halfWidth : 0.0).clamp(-0.85, 0.85);
       final posY = (halfHeight > 0 ? _textOffset.dy / halfHeight : 0.0).clamp(-0.85, 0.85);
 
+      final stickersList = _stickerItems.map((e) => e.text).toList();
+      final stickerPositionsX = _stickerItems.map((e) => (halfWidth > 0 ? e.offset.dx / halfWidth : 0.0).clamp(-0.85, 0.85)).toList();
+      final stickerPositionsY = _stickerItems.map((e) => (halfHeight > 0 ? e.offset.dy / halfHeight : 0.0).clamp(-0.85, 0.85)).toList();
+
       await _storyService.createStory(
         imageUrl: imageUrl,
         caption: caption,
         backgroundColor: _selectedBgColor,
         musicTrack: _selectedMusic,
-        stickers: _stickers,
+        stickers: stickersList,
+        stickerPositionsX: stickerPositionsX,
+        stickerPositionsY: stickerPositionsY,
         textPositionX: posX,
         textPositionY: posY,
         musicStartTime: _musicStartSeconds,
@@ -652,38 +670,40 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         // 2 Thẻ Chọn lớn phong cách Facebook Story
         Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Wrap(
-              spacing: 24,
-              runSpacing: 24,
-              alignment: WrapAlignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
               children: [
                 // Card 1: Tạo tin có ảnh hoặc video
-                _buildActionCard(
-                  title: 'Tạo tin có ảnh hoặc video',
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2E65F3), Color(0xFF5D9CEC), Color(0xFFA29BFE)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                Expanded(
+                  child: _buildActionCard(
+                    title: 'Tạo tin có ảnh hoặc video',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2E65F3), Color(0xFF5D9CEC), Color(0xFFA29BFE)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    icon: Icons.photo_library_rounded,
+                    onTap: _pickImage,
                   ),
-                  icon: Icons.photo_library_rounded,
-                  onTap: _pickImage,
                 ),
+                const SizedBox(width: 14),
 
                 // Card 2: Tạo tin dạng văn bản
-                _buildActionCard(
-                  title: 'Tạo tin dạng văn bản',
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFAC5CD9), Color(0xFFED5565), Color(0xFFFAB1A0)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                Expanded(
+                  child: _buildActionCard(
+                    title: 'Tạo tin dạng văn bản',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFAC5CD9), Color(0xFFED5565), Color(0xFFFAB1A0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    isAaIcon: true,
+                    onTap: () {
+                      setState(() {
+                        _mode = StoryCreationMode.text;
+                      });
+                    },
                   ),
-                  isAaIcon: true,
-                  onTap: () {
-                    setState(() {
-                      _mode = StoryCreationMode.text;
-                    });
-                  },
                 ),
               ],
             ),
@@ -706,8 +726,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        width: 180,
-        height: 270,
+        height: 250,
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(18),
@@ -719,13 +738,13 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 54,
-              height: 54,
+              width: 52,
+              height: 52,
               decoration: const BoxDecoration(
                 color: Color(0xFF18191A),
                 shape: BoxShape.circle,
@@ -736,7 +755,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                     )
                   : Icon(icon, color: Colors.white, size: 26),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Text(
               title,
               textAlign: TextAlign.center,
@@ -875,31 +894,63 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   ),
                 ),
 
-              // Stickers
-              if (_stickers.isNotEmpty)
-                Positioned(
-                  top: 20,
-                  left: 14,
-                  right: 14,
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    alignment: WrapAlignment.center,
-                    children: _stickers.map((st) {
-                      return Chip(
-                        backgroundColor: Colors.black45,
-                        label: Text(st, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                        deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white70),
-                        onDeleted: () => setState(() => _stickers.remove(st)),
-                      );
-                    }).toList(),
-                  ),
-                ),
+              // Draggable Stickers (Kéo thả tự do trên story)
+              ..._stickerItems.map((item) {
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final centerX = constraints.maxWidth / 2;
+                    final centerY = constraints.maxHeight / 2;
+                    final left = (centerX + item.offset.dx - 50).clamp(10.0, constraints.maxWidth - 120.0);
+                    final top = (centerY + item.offset.dy - 18).clamp(60.0, constraints.maxHeight - 80.0);
+
+                    return Positioned(
+                      left: left,
+                      top: top,
+                      child: GestureDetector(
+                        onPanUpdate: (details) {
+                          setState(() {
+                            item.offset += details.delta;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white38),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2)),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                item.text,
+                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _stickerItems.remove(item);
+                                  });
+                                },
+                                child: const Icon(Icons.close, size: 14, color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }),
 
               // Nhạc Pill
               if (_selectedMusic != null)
                 Positioned(
-                  top: _stickers.isNotEmpty ? 70 : 20,
+                  top: 24,
                   left: 16,
                   right: 16,
                   child: Center(
@@ -1477,30 +1528,56 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           Row(
             children: [
               Expanded(
+                flex: 1,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3A3B3C),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   onPressed: _onDiscard,
-                  child: const Text('Bỏ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text('Bỏ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E65F3),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                flex: 2,
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  onPressed: _isUploading ? null : _publishStory,
-                  child: _isUploading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Chia sẻ lên tin', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                    ),
+                    onPressed: _isUploading ? null : _publishStory,
+                    child: _isUploading
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                              SizedBox(width: 6),
+                              Text('Chia sẻ lên tin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                            ],
+                          ),
+                  ),
                 ),
               ),
             ],
@@ -1513,81 +1590,110 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   Widget _buildPhotoMobileBottomBar() {
     return Container(
       color: const Color(0xFF242526),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              // Thêm text lên ảnh
-              Expanded(
-                child: TextField(
-                  controller: _textController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Thêm chữ lên ảnh...',
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    isDense: true,
-                    filled: true,
-                    fillColor: const Color(0xFF3A3B3C),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                // Thêm text lên ảnh
+                Expanded(
+                  child: TextField(
+                    controller: _textController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Thêm chữ lên ảnh...',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      isDense: true,
+                      filled: true,
+                      fillColor: const Color(0xFF3A3B3C),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-                  onChanged: (_) => setState(() {}),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Nút Xoay
-              IconButton(
-                style: IconButton.styleFrom(backgroundColor: const Color(0xFF3A3B3C)),
-                icon: const Icon(Icons.rotate_right_rounded, color: Colors.white),
-                tooltip: 'Xoay ảnh',
-                onPressed: _rotatePhoto,
-              ),
-              // Nút Đổi ảnh
-              IconButton(
-                style: IconButton.styleFrom(backgroundColor: const Color(0xFF3A3B3C)),
-                icon: const Icon(Icons.photo_library_rounded, color: Colors.white),
-                tooltip: 'Đổi ảnh khác',
-                onPressed: _pickImage,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+                const SizedBox(width: 8),
+                // Nút Xoay
+                IconButton(
+                  style: IconButton.styleFrom(backgroundColor: const Color(0xFF3A3B3C)),
+                  icon: const Icon(Icons.rotate_right_rounded, color: Colors.white),
+                  tooltip: 'Xoay ảnh',
+                  onPressed: _rotatePhoto,
+                ),
+                // Nút Đổi ảnh
+                IconButton(
+                  style: IconButton.styleFrom(backgroundColor: const Color(0xFF3A3B3C)),
+                  icon: const Icon(Icons.photo_library_rounded, color: Colors.white),
+                  tooltip: 'Đổi ảnh khác',
+                  onPressed: _pickImage,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-          // Nút Bỏ & Chia sẻ
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3A3B3C),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+            // Nút Bỏ & Chia sẻ
+            Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3A3B3C),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _onDiscard,
+                    child: const Text('Bỏ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   ),
-                  onPressed: _onDiscard,
-                  child: const Text('Bỏ', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E65F3),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      ),
+                      onPressed: _isUploading ? null : _publishStory,
+                      child: _isUploading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                                SizedBox(width: 6),
+                                Text('Chia sẻ lên tin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                              ],
+                            ),
+                    ),
                   ),
-                  onPressed: _isUploading ? null : _publishStory,
-                  child: _isUploading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Chia sẻ lên tin', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
