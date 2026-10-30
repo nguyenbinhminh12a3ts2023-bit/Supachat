@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
 import '../../models/friend_request_model.dart';
 import '../../models/post_model.dart';
@@ -802,6 +803,69 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
               'Hãy thử tìm kiếm bằng Email chính xác của bạn bè (ví dụ: manh11725@gmail.com) hoặc Tên đầy đủ (ví dụ: Hoàng Duy Mạnh).',
               textAlign: TextAlign.center,
               style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            // Hộp hướng dẫn kết nối bạn bè thông minh
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Bạn của bạn đã tạo tài khoản chưa?',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Để kết bạn & nhắn tin, bạn bè của bạn cần mở link web và bấm "Đăng ký" (hoặc "Đăng nhập Google") một lần để tạo tài khoản trên hệ thống.',
+                    style: TextStyle(fontSize: 12, color: textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.share_rounded, size: 16),
+                      label: const Text(
+                        'Sao chép link web để gửi cho bạn bè',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () async {
+                        const link = 'https://supachat-n1523dthc7.web.app';
+                        try {
+                          await Clipboard.setData(const ClipboardData(text: link));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã sao chép link: https://supachat-n1523dthc7.web.app. Hãy gửi link này cho bạn qua Zalo/Facebook nhé!'),
+                                backgroundColor: AppColors.accentGreen,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (_) {}
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

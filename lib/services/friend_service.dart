@@ -141,6 +141,12 @@ class FriendService {
       }
     } catch (e) {
       debugPrint('Lỗi tìm kiếm người dùng: $e');
+      if (e.toString().toLowerCase().contains('permission-denied') ||
+          e.toString().toLowerCase().contains('insufficient permissions')) {
+        throw Exception(
+          'Quy tắc bảo mật Firestore đang chặn đọc dữ liệu (Permission Denied). Hãy vào Firebase Console > Firestore Database > Tab Rules (Security) và mở quyền allow read, write: if request.auth != null;',
+        );
+      }
     }
 
     return resultsMap.values.toList();
