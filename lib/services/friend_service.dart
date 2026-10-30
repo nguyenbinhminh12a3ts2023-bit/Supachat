@@ -70,6 +70,20 @@ class FriendService {
       } catch (_) {}
     }
 
+    // 1c. Tìm trực tiếp theo displayName chính xác
+    try {
+      final nameSnap = await _firestore
+          .collection('users')
+          .where('displayName', isEqualTo: query.trim())
+          .get()
+          .timeout(const Duration(seconds: 6));
+      for (var doc in nameSnap.docs) {
+        if (doc.id != currentUid) {
+          resultsMap[doc.id] = UserModel.fromDocument(doc);
+        }
+      }
+    } catch (_) {}
+
     // 2. Quét danh sách người dùng trên Firestore để tìm kiếm linh hoạt (fuzzy search: tên, email, uid)
     try {
       final allDocs = await _firestore
