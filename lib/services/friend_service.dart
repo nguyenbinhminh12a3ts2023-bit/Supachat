@@ -24,47 +24,90 @@ class FriendService {
     for (int i = 0; i < withDiacritics.length; i++) {
       result = result.replaceAll(withDiacritics[i], withoutDiacritics[i]);
     }
+    result = result.replaceAll(RegExp(r'[\u0300-\u036f]'), '');
+    result = result.replaceAll('đ', 'd').replaceAll('Đ', 'd');
     return result;
   }
 
   /// Tìm kiếm người dùng chính xác theo Email hoặc Tên hiển thị (Hỗ trợ tiếng Việt có dấu và không dấu)
   Future<List<UserModel>> searchUsersByEmail(String query) async {
-    final queryText = query.trim().toLowerCase().replaceAll('@', '');
-    if (queryText.isEmpty) return [];
+    final rawQuery = query.trim().toLowerCase();
+    if (rawQuery.isEmpty) return [];
 
-    final normalizedQuery = _normalizeString(queryText);
+    final cleanQuery = rawQuery.replaceAll('@', '');
+    final normalizedQuery = _normalizeString(rawQuery);
+    final normalizedClean = _normalizeString(cleanQuery);
     final currentUid = currentUserId;
-    final Set<String> foundUids = {};
-    final List<UserModel> results = [];
+    final Map<String, UserModel> resultsMap = {};
 
+    // 1. Tìm trực tiếp bằng Firestore query theo email chính xác (ngay cả khi có hàng nghìn user)
     try {
-      // Đọc toàn bộ danh sách người dùng trên Firestore (không dùng range filter tránh lỗi index)
-      final allDocs = await _firestore.collection('users').limit(100).get().timeout(const Duration(seconds: 10));
+      final emailQuerySnap = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: query.trim())
+          .get()
+          .timeout(const Duration(seconds: 6));
+      for (var doc in emailQuerySnap.docs) {
+        if (doc.id != currentUid) {
+          resultsMap[doc.id] = UserModel.fromDocument(doc);
+        }
+      }
+    } catch (_) {}
+
+    // 1b. Thử lowercase email nếu khác
+    if (rawQuery != query.trim()) {
+      try {
+        final emailLowerSnap = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: rawQuery)
+            .get()
+            .timeout(const Duration(seconds: 6));
+        for (var doc in emailLowerSnap.docs) {
+          if (doc.id != currentUid) {
+            resultsMap[doc.id] = UserModel.fromDocument(doc);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Quét danh sách người dùng trên Firestore để tìm kiếm linh hoạt (fuzzy search: tên, email, uid)
+    try {
+      final allDocs = await _firestore
+          .collection('users')
+          .limit(200)
+          .get()
+          .timeout(const Duration(seconds: 10));
+
       for (var doc in allDocs.docs) {
-        if (doc.id == currentUid) continue;
+        if (doc.id == currentUid || resultsMap.containsKey(doc.id)) continue;
 
         final u = UserModel.fromDocument(doc);
-        final name = u.displayName.toLowerCase();
-        final email = u.email.toLowerCase();
-        final normalizedName = _normalizeString(u.displayName);
-        final normalizedEmail = _normalizeString(u.email);
+        final uEmail = u.email.trim().toLowerCase();
+        final uName = u.displayName.trim().toLowerCase();
+        final uEmailPrefix = uEmail.split('@').first;
+        final uNormName = _normalizeString(uName);
+        final uNormEmail = _normalizeString(uEmail);
 
-        if (name.contains(queryText) ||
-            normalizedName.contains(normalizedQuery) ||
-            email.contains(queryText) ||
-            normalizedEmail.contains(normalizedQuery) ||
-            u.uid == queryText) {
-          if (!foundUids.contains(doc.id)) {
-            foundUids.add(doc.id);
-            results.add(u);
-          }
+        // So khớp đa năng: Email đầy đủ, Tiền tố email, Tên có dấu, Tên không dấu, UID
+        final isMatch = uEmail == rawQuery ||
+            uEmail.contains(rawQuery) ||
+            uEmailPrefix == cleanQuery ||
+            uEmailPrefix.contains(cleanQuery) ||
+            uName.contains(rawQuery) ||
+            uNormName.contains(normalizedQuery) ||
+            uNormName.contains(normalizedClean) ||
+            uNormEmail.contains(normalizedQuery) ||
+            u.uid == rawQuery;
+
+        if (isMatch) {
+          resultsMap[doc.id] = u;
         }
       }
     } catch (e) {
       debugPrint('Lỗi tìm kiếm người dùng: $e');
     }
 
-    return results;
+    return resultsMap.values.toList();
   }
 
   /// Lấy danh sách người dùng thật trên Firestore để gợi ý kết bạn

@@ -108,6 +108,17 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 child: TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (query) {
+                    if (query.trim().isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SearchScreen(initialQuery: query.trim()),
+                        ),
+                      );
+                    }
+                  },
                   style: TextStyle(fontSize: 14, color: textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Tìm người bạn muốn kết nối',
@@ -305,6 +316,37 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, color: textSecondary),
                   ),
+                  if (_searchController.text.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SearchScreen(initialQuery: _searchController.text.trim()),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.brandGradient,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tìm "${_searchController.text}" trên SupaChat',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

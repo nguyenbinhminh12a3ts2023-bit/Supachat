@@ -13,7 +13,7 @@ import 'widgets/incoming_call_listener.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Khởi tạo Firebase SDK an toàn trên cả Mobile & Web
+
   try {
     if (Firebase.apps.isEmpty) {
       if (kIsWeb) {
@@ -38,7 +38,7 @@ void main() async {
   runApp(const SupaChatApp());
 }
 
-/// Ứng dụng SupaChat - Nền tảng nhắn tin & kết nối đa tính năng
+
 class SupaChatApp extends StatelessWidget {
   const SupaChatApp({super.key});
 

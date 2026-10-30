@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/secure_keypad_sheet.dart';
@@ -430,6 +431,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showLanguageSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Consumer<LocaleProvider>(
+        builder: (ctx, loc, _) {
+          final currentCode = loc.languageCode;
+          return Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  loc.t('Chọn ngôn ngữ', 'Select Language', '言語を選択', '언어 선택'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _buildLanguageItem(ctx, loc, 'vi', 'Tiếng Việt', '🇻🇳', currentCode == 'vi', isDark),
+                _buildLanguageItem(ctx, loc, 'en', 'English', '🇬🇧', currentCode == 'en', isDark),
+                _buildLanguageItem(ctx, loc, 'ja', '日本語 (Japanese)', '🇯🇵', currentCode == 'ja', isDark),
+                _buildLanguageItem(ctx, loc, 'ko', '한국어 (Korean)', '🇰🇷', currentCode == 'ko', isDark),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLanguageItem(
+    BuildContext ctx,
+    LocaleProvider loc,
+    String code,
+    String name,
+    String flag,
+    bool isSelected,
+    bool isDark,
+  ) {
+    return InkWell(
+      onTap: () async {
+        await loc.setLanguage(code);
+        if (ctx.mounted) Navigator.pop(ctx);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(loc.t('Đã chuyển ngôn ngữ sang \$name', 'Language changed to \$name')),
+              backgroundColor: AppColors.accentGreen,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? AppColors.darkSecondary : AppColors.lightLavender)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                name,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showLogoutDialog(BuildContext context, AuthProvider authProvider) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
@@ -486,6 +593,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final localeProvider = Provider.of<LocaleProvider>(context);
     final user = authProvider.currentUserModel;
 
     final isDark = themeProvider.isDarkMode;
@@ -619,21 +727,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                     Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
-                    // Ngôn ngữ
+                    // Ngôn ngữ (Hỗ trợ đổi tiếng Việt, Anh, Nhật, Hàn)
                     _buildSettingsTile(
                       icon: Icons.language_rounded,
-                      title: 'Ngôn ngữ',
-                      subtitle: 'Tiếng Việt',
+                      title: localeProvider.t('Ngôn ngữ', 'Language', '言語', '언어'),
+                      subtitle: localeProvider.languageName,
                       trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Hệ thống đang sử dụng Tiếng Việt mặc định.'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
+                      onTap: () => _showLanguageSheet(context),
                     ),
                     Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
                     // Thông báo
