@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/music_tracks.dart';
@@ -124,6 +125,40 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     }
   }
 
+  Widget _buildStoryImage(String url, Color bgColor) {
+    if (url.startsWith('data:image')) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (_, __, ___) => _buildFallback(bgColor),
+        );
+      } catch (_) {
+        return _buildFallback(bgColor);
+      }
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (_, __, ___) => _buildFallback(bgColor),
+    );
+  }
+
+  Widget _buildFallback(Color bgColor) {
+    return Container(
+      color: bgColor,
+      child: const Center(
+        child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+      ),
+    );
+  }
+
   Future<void> _deleteStory(StoryModel story) async {
     _pause();
     final confirm = await showDialog<bool>(
@@ -166,333 +201,363 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTapDown: (_) => _pause(),
-        onTapUp: (details) {
-          _resume();
-          final screenWidth = MediaQuery.of(context).size.width;
-          if (details.localPosition.dx < screenWidth * 0.35) {
-            _goToPrevStory();
-          } else {
-            _goToNextStory();
-          }
-        },
-        onLongPressStart: (_) => _pause(),
-        onLongPressEnd: (_) => _resume(),
-        child: Stack(
-          children: [
-            // 1. Nền Story (Full Screen Canvas: Ảnh nền hoặc Gradient)
-            Positioned.fill(
-              child: story.imageUrl != null
-                  ? Image.network(
-                      story.imageUrl!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      errorBuilder: (_, _, _) => Container(
-                        color: bgColor,
-                        child: const Center(
-                          child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            bgColor,
-                            bgColor.withValues(alpha: 0.82),
-                            const Color(0xFF10121C),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-            ),
-
-            // Lớp phủ bóng gradient để text và header nổi bật
-            if (story.imageUrl != null)
+      body: SizedBox.expand(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _pause(),
+          onTapUp: (details) {
+            _resume();
+            final screenWidth = MediaQuery.of(context).size.width;
+            if (details.localPosition.dx < screenWidth * 0.35) {
+              _goToPrevStory();
+            } else {
+              _goToNextStory();
+            }
+          },
+          onLongPressStart: (_) => _pause(),
+          onLongPressEnd: (_) => _resume(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Nền Story (Full Screen Canvas: Toàn màn hình)
               Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.5),
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.6),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.45, 1.0],
-                    ),
-                  ),
-                ),
+                child: story.imageUrl != null && story.imageUrl!.isNotEmpty
+                    ? _buildStoryImage(story.imageUrl!, bgColor)
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              bgColor,
+                              bgColor.withValues(alpha: 0.82),
+                              const Color(0xFF10121C),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
               ),
 
-            // 2. Chữ hiển thị đúng vị trí người dùng đã kéo thả
-            if (story.caption.isNotEmpty)
-              Align(
-                alignment: Alignment(story.textPositionX, story.textPositionY),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: story.textStyle == 'normal'
-                      ? const EdgeInsets.symmetric(horizontal: 14, vertical: 8)
-                      : const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  decoration: story.textStyle == 'darkPill'
-                      ? BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.72),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white24),
-                        )
-                      : story.textStyle == 'lightPill'
-                          ? BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
-                              ],
-                            )
-                          : null,
-                  child: Text(
-                    story.caption,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: story.textStyle == 'lightPill' ? Colors.black87 : Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      shadows: story.textStyle == 'normal'
-                          ? const [
-                              Shadow(color: Colors.black87, blurRadius: 12, offset: Offset(0, 2)),
-                              Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
-                            ]
-                          : null,
-                    ),
-                  ),
-                ),
-              ),
-
-            // Stickers nếu có (Hiển thị đúng vị trí người dùng đã kéo thả)
-            if (story.stickers.isNotEmpty)
-              ...story.stickers.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final st = entry.value;
-                final posX = idx < story.stickerPositionsX.length ? story.stickerPositionsX[idx] : 0.0;
-                final posY = idx < story.stickerPositionsY.length ? story.stickerPositionsY[idx] : (-0.4 + idx * 0.12).clamp(-0.8, 0.8);
-                return Align(
-                  alignment: Alignment(posX, posY),
+              // Lớp phủ bóng gradient để text và header nổi bật
+              if (story.imageUrl != null && story.imageUrl!.isNotEmpty)
+                Positioned.fill(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.28),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white38),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
-                      ],
-                    ),
-                    child: Text(
-                      st,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withValues(alpha: 0.6),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.0, 0.45, 1.0],
                       ),
                     ),
                   ),
-                );
-              }),
+                ),
 
-            // Top Header: Progress bars & User Info
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Thanh tiến trình
-                    Row(
-                      children: List.generate(widget.stories.length, (idx) {
-                        return Expanded(
-                          child: Container(
-                            height: 3,
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white30,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                            child: idx < _currentIndex
-                                ? Container(color: Colors.white)
-                                : idx == _currentIndex
-                                    ? AnimatedBuilder(
-                                        animation: _progressController,
-                                        builder: (ctx, child) {
-                                          return FractionallySizedBox(
-                                            alignment: Alignment.centerLeft,
-                                            widthFactor: _progressController.value,
-                                            child: Container(color: Colors.white),
-                                          );
-                                        },
-                                      )
-                                    : const SizedBox.shrink(),
-                          ),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // User Info row (Figma exact: Avatar, Name, time, ellipsis, close)
-                    Row(
-                      children: [
-                        AvatarWidget(
-                          photoUrl: story.userAvatar,
-                          name: story.userName,
-                          radius: 18,
+              // 2. Chữ hiển thị đúng vị trí người dùng đã kéo thả
+              if (story.caption.isNotEmpty)
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment(story.textPositionX, story.textPositionY),
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: story.textStyle == 'normal'
+                          ? const EdgeInsets.symmetric(horizontal: 14, vertical: 8)
+                          : const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      decoration: story.textStyle == 'darkPill'
+                          ? BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: Colors.white24),
+                            )
+                          : story.textStyle == 'lightPill'
+                              ? BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: const [
+                                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                                  ],
+                                )
+                              : null,
+                      child: Text(
+                        story.caption,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: story.textStyle == 'lightPill' ? Colors.black87 : Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          shadows: story.textStyle == 'normal'
+                              ? const [
+                                  Shadow(color: Colors.black87, blurRadius: 12, offset: Offset(0, 2)),
+                                  Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
+                                ]
+                              : null,
                         ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              story.userName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
-                              ),
-                            ),
-                            if (story.musicTrackTitle != null)
-                              Container(
-                                margin: const EdgeInsets.only(top: 2),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // 3. Stickers nếu có (Hiển thị đúng vị trí người dùng đã kéo thả)
+              if (story.stickers.isNotEmpty)
+                ...story.stickers.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final st = entry.value;
+                  final posX = idx < story.stickerPositionsX.length ? story.stickerPositionsX[idx] : 0.0;
+                  final posY = idx < story.stickerPositionsY.length ? story.stickerPositionsY[idx] : (-0.4 + idx * 0.12).clamp(-0.8, 0.8);
+                  return Positioned.fill(
+                    child: Align(
+                      alignment: Alignment(posX, posY),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white38),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+                          ],
+                        ),
+                        child: Text(
+                          st,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
+              // 4. Top Header: Progress bars & User Info (Định vị cố định ở đỉnh màn hình)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Thanh tiến trình
+                        Row(
+                          children: List.generate(widget.stories.length, (idx) {
+                            return Expanded(
+                              child: Container(
+                                height: 3,
+                                margin: const EdgeInsets.symmetric(horizontal: 2),
                                 decoration: BoxDecoration(
-                                  color: Colors.black38,
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.white30,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                child: idx < _currentIndex
+                                    ? Container(color: Colors.white)
+                                    : idx == _currentIndex
+                                        ? AnimatedBuilder(
+                                            animation: _progressController,
+                                            builder: (ctx, child) {
+                                              return FractionallySizedBox(
+                                                alignment: Alignment.centerLeft,
+                                                widthFactor: _progressController.value,
+                                                child: Container(color: Colors.white),
+                                              );
+                                            },
+                                          )
+                                        : const SizedBox.shrink(),
+                              ),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // User Info row (Figma exact: Avatar, Name, Music, Delete/Close)
+                        Row(
+                          children: [
+                            AvatarWidget(
+                              photoUrl: story.userAvatar,
+                              name: story.userName,
+                              radius: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  story.userName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                                  ),
+                                ),
+                                if (story.musicTrackTitle != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black38,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.music_note_rounded, color: AppColors.primaryLight, size: 12),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${story.musicTrackTitle} • ${story.musicTrackArtist ?? ''}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const Spacer(),
+
+                            // Delete button if my story
+                            if (isMyStory)
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
+                                tooltip: 'Xóa tin',
+                                onPressed: () => _deleteStory(story),
+                              ),
+
+                            // Close button
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 5. Quick Reply Bottom Bar chuẩn Instagram / Facebook
+              // Nếu là tin của bạn: Hiển thị thanh đếm lượt xem "👁️ Tin của bạn"
+              // Nếu là tin của người khác: Hiển thị ô "Gửi tin nhắn..." + Nút Thả tim ❤️
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 24,
+                child: SafeArea(
+                  top: false,
+                  child: isMyStory
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white24, width: 0.8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.visibility_outlined, color: Colors.white70, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${story.viewers.length} người đã xem',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 46,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.white24, width: 0.8),
                                 ),
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.music_note_rounded, color: AppColors.primaryLight, size: 12),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${story.musicTrackTitle} • ${story.musicTrackArtist ?? ''}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
+                                    Expanded(
+                                      child: TextField(
+                                        onTap: () => _pause(),
+                                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                                        decoration: const InputDecoration(
+                                          hintText: 'Gửi tin nhắn...',
+                                          hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          errorBorder: InputBorder.none,
+                                          focusedErrorBorder: InputBorder.none,
+                                          disabledBorder: InputBorder.none,
+                                          filled: false,
+                                          fillColor: Colors.transparent,
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                                          isDense: true,
+                                        ),
+                                        onSubmitted: (val) {
+                                          _resume();
+                                          if (val.trim().isNotEmpty) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Đã gửi phản hồi đến ${story.userName}'),
+                                                behavior: SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
+                                        },
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                          ],
-                        ),
-                        const Spacer(),
-
-                        // Delete button if my story
-                        if (isMyStory)
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
-                            onPressed: () => _deleteStory(story),
-                          ),
-
-                        // Close button
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // 4. Quick Reply Bottom Bar chuẩn Figma (Reply input, heart reaction, send)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 24,
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 46,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white24, width: 0.8),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                onTap: () => _pause(),
-                                style: const TextStyle(color: Colors.white, fontSize: 14),
-                                decoration: const InputDecoration(
-                                  hintText: 'Gửi tin nhắn...',
-                                  hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  errorBorder: InputBorder.none,
-                                  focusedErrorBorder: InputBorder.none,
-                                  disabledBorder: InputBorder.none,
-                                  filled: false,
-                                  fillColor: Colors.transparent,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                                  isDense: true,
+                            ),
+                            const SizedBox(width: 10),
+                            // Nút thả tim
+                            InkWell(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Đã thả ❤️ cho tin của ${story.userName}!'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(24),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white24, width: 0.8),
                                 ),
-                                onSubmitted: (val) {
-                                  _resume();
-                                  if (val.trim().isNotEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Đã gửi phản hồi đến ${story.userName}'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                },
+                                child: const Icon(Icons.favorite_rounded, color: AppColors.coralDanger, size: 22),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Nút thả tim
-                    InkWell(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Đã thả ❤️ cho tin của ${story.userName}!'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white24, width: 0.8),
-                        ),
-                        child: const Icon(Icons.favorite_rounded, color: AppColors.coralDanger, size: 22),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
