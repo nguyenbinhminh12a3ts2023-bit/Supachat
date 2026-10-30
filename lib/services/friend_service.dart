@@ -84,6 +84,22 @@ class FriendService {
       }
     } catch (_) {}
 
+    // 1d. Thử tìm nếu query có tiền tố @ (ví dụ @manh11725 -> thử tìm manh11725)
+    if (cleanQuery.isNotEmpty && cleanQuery != rawQuery) {
+      try {
+        final cleanNameSnap = await _firestore
+            .collection('users')
+            .where('displayName', isEqualTo: cleanQuery)
+            .get()
+            .timeout(const Duration(seconds: 4));
+        for (var doc in cleanNameSnap.docs) {
+          if (doc.id != currentUid) {
+            resultsMap[doc.id] = UserModel.fromDocument(doc);
+          }
+        }
+      } catch (_) {}
+    }
+
     // 2. Quét danh sách người dùng trên Firestore để tìm kiếm linh hoạt (fuzzy search: tên, email, uid)
     try {
       final allDocs = await _firestore
@@ -102,15 +118,21 @@ class FriendService {
         final uNormName = _normalizeString(uName);
         final uNormEmail = _normalizeString(uEmail);
 
-        // So khớp đa năng: Email đầy đủ, Tiền tố email, Tên có dấu, Tên không dấu, UID
+        // So khớp đa năng: Email đầy đủ, Tiền tố email, Tên có dấu, Tên không dấu, UID, Handle @
         final isMatch = uEmail == rawQuery ||
+            uEmail == cleanQuery ||
             uEmail.contains(rawQuery) ||
+            uEmail.contains(cleanQuery) ||
             uEmailPrefix == cleanQuery ||
             uEmailPrefix.contains(cleanQuery) ||
+            uName == rawQuery ||
+            uName == cleanQuery ||
             uName.contains(rawQuery) ||
+            uName.contains(cleanQuery) ||
             uNormName.contains(normalizedQuery) ||
             uNormName.contains(normalizedClean) ||
             uNormEmail.contains(normalizedQuery) ||
+            uNormEmail.contains(normalizedClean) ||
             u.uid == rawQuery;
 
         if (isMatch) {

@@ -102,6 +102,17 @@ class AuthProvider with ChangeNotifier {
           createdAt: DateTime.now(),
         );
         await _saveLocalUserProfile(_currentUserModel!);
+
+        // Tự động đồng bộ hồ sơ lên Firestore nếu tài khoản chưa có document (ví dụ: database mới tạo)
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set(_currentUserModel!.toMap(), SetOptions(merge: true))
+              .timeout(const Duration(seconds: 10));
+        } catch (e) {
+          debugPrint('Lưu ý đồng bộ user Firestore: $e');
+        }
       }
       notifyListeners();
     }
