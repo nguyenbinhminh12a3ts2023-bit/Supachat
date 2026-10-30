@@ -10,7 +10,6 @@ import '../../services/audio_player_service.dart';
 import '../../services/post_service.dart';
 import '../../services/story_service.dart';
 import '../../widgets/avatar_widget.dart';
-import '../../widgets/supa_chat_logo.dart';
 import '../story/create_story_screen.dart';
 import '../story/story_viewer_screen.dart';
 import 'create_post_screen.dart';
@@ -227,25 +226,27 @@ class _FeedScreenState extends State<FeedScreen> {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SupaChatIcon(size: 32),
-            const SizedBox(width: 10),
-            Text(
-              'SupaChat',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ],
+        title: Text(
+          'Bảng tin',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: textPrimary,
+            letterSpacing: -0.5,
+          ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.chat_bubble_outline_rounded, color: textPrimary),
+            icon: Icon(Icons.notifications_outlined, color: textPrimary, size: 24),
+            tooltip: 'Thông báo',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Chưa có thông báo mới.')),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.chat_bubble_outline_rounded, color: textPrimary, size: 22),
             tooltip: 'Tin nhắn',
             onPressed: widget.onNavigateToMessages,
           ),
@@ -453,7 +454,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Tin của bạn',
+              hasActiveStory ? 'Tin của bạn' : 'Tạo Story',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

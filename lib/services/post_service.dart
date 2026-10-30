@@ -14,27 +14,23 @@ class PostService {
   String? get currentUserId => _auth.currentUser?.uid;
 
   /// Luồng lấy danh sách bài viết thời gian thực (Mới nhất lên đầu)
-  Stream<List<PostModel>> getPostsStream() {
+  Stream<List<PostModel>> getPostsStream() async* {
+    if (cachedPosts.isNotEmpty) {
+      yield cachedPosts;
+    }
     try {
-      return _firestore
+      yield* _firestore
           .collection('posts')
-          .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
         final list = snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
+        list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         cachedPosts = list;
         return list;
-      }).handleError((error) {
-        debugPrint('Lưu ý stream orderBy posts lỗi ($error), dùng fallback query:');
-        return _firestore.collection('posts').limit(50).snapshots().map((snapshot) {
-          final list = snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList();
-          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          cachedPosts = list;
-          return list;
-        });
       });
-    } catch (_) {
-      return Stream.value(cachedPosts);
+    } catch (e) {
+      debugPrint('Lưu ý getPostsStream: $e');
+      yield cachedPosts;
     }
   }
 

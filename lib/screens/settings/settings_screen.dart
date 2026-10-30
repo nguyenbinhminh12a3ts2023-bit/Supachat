@@ -258,117 +258,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showPersonalInfoSheet(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.currentUserModel;
-
-    final nameController = TextEditingController(text: user?.displayName ?? '');
-    final bioController = TextEditingController(text: user?.bio ?? '');
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: textSecondary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Thông tin cá nhân',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: 'Tên hiển thị',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: bioController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Tiểu sử',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.email_outlined, color: AppColors.primary),
-                title: Text('Email tài khoản', style: TextStyle(fontSize: 13, color: textSecondary)),
-                subtitle: Text(user?.email ?? 'Chưa xác định', style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () async {
-                    await authProvider.updateProfileDetails(
-                      displayName: nameController.text.trim(),
-                      bio: bioController.text.trim(),
-                    );
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đã cập nhật thông tin cá nhân!'), backgroundColor: AppColors.accentGreen),
-                      );
-                    }
-                  },
-                  child: const Text('Lưu thông tin', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showBlockedUsersDialog(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
@@ -593,65 +482,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showQrCodeDialog(BuildContext context, String name, String handle) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.qr_code_2_rounded, size: 180, color: Color(0xFF1B1E2C)),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              handle,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.primaryLight,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Quét mã để kết nối nhanh trên SupaChat',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -664,69 +494,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
     final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
-    final actionBg = isDark ? AppColors.darkSecondary : AppColors.lightLavender;
 
-    final displayName = user?.displayName != null && user!.displayName.isNotEmpty ? user.displayName : 'Hoài An';
-    final handleName = '@${(user?.email != null ? user!.email.split('@').first : 'hoaian').toLowerCase()}';
+    final displayName = user?.displayName != null && user!.displayName.isNotEmpty ? user.displayName : 'Minh An';
     final avatarUrl = user?.photoUrl;
 
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Tiêu đề trang & Nút Action QR Code
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cài đặt',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'SupaChat theo cách của bạn.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: textSecondary,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
+              // 1. Tiêu đề trang
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Cài đặt',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                    letterSpacing: -0.5,
                   ),
-                  // Nút QR Code
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: actionBg,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.qr_code_rounded,
-                        size: 22,
-                        color: isDark ? AppColors.primaryLight : AppColors.primary,
-                      ),
-                      onPressed: () => _showQrCodeDialog(context, displayName, handleName),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
-              // 2. Thẻ hồ sơ (Profile Card Figma)
+              // 2. Thẻ tài khoản (Account card Figma - 20px radius)
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -738,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: cardBg,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: borderColor, width: 0.8),
                   ),
                   child: Row(
@@ -747,7 +542,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       AvatarWidget(
                         photoUrl: avatarUrl,
                         name: displayName,
-                        radius: 30,
+                        radius: 28,
                         showOnlineStatus: true,
                         isOnline: true,
                       ),
@@ -766,21 +561,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: textPrimary,
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              handleName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: textSecondary,
-                              ),
-                            ),
                             const SizedBox(height: 4),
                             Text(
-                              'Chỉnh sửa hồ sơ',
+                              'Xem trang cá nhân của bạn',
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                fontSize: 13,
+                                color: textSecondary,
                               ),
                             ),
                           ],
@@ -794,13 +580,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 3. TÀI KHOẢN & BẢO MẬT
+              // 3. TRẢI NGHIỆM CỦA BẠN (Figma exact heading)
               Text(
-                'TÀI KHOẢN & BẢO MẬT',
+                'TRẢI NGHIỆM CỦA BẠN',
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
                   color: textSecondary,
                 ),
               ),
@@ -814,33 +600,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
+                    // Chế độ tối
                     _buildSettingsTile(
-                      icon: Icons.person_outline_rounded,
-                      title: 'Thông tin cá nhân',
-                      subtitle: 'Họ tên, tiểu sử & thông tin tài khoản',
-                      trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
+                      icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                      title: 'Chế độ tối',
+                      subtitle: isDark ? 'Đang bật' : 'Đang tắt',
+                      trailing: Switch.adaptive(
+                        value: isDark,
+                        activeTrackColor: AppColors.primary,
+                        activeThumbColor: Colors.white,
+                        onChanged: (val) {
+                          themeProvider.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                        },
+                      ),
                       isDark: isDark,
-                      onTap: () => _showPersonalInfoSheet(context),
+                      onTap: () {
+                        themeProvider.setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+                      },
                     ),
                     Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
+                    // Ngôn ngữ
                     _buildSettingsTile(
-                      icon: Icons.lock_reset_rounded,
-                      title: 'Mật khẩu & bảo mật',
-                      subtitle: 'Đổi mật khẩu tài khoản SupaChat',
+                      icon: Icons.language_rounded,
+                      title: 'Ngôn ngữ',
+                      subtitle: 'Tiếng Việt',
                       trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
-                      onTap: () => _showChangePasswordDialog(context),
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Hệ thống đang sử dụng Tiếng Việt mặc định.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
                     ),
                     Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
-                    _buildSettingsTile(
-                      icon: Icons.shield_outlined,
-                      title: 'Quyền riêng tư',
-                      subtitle: 'Bảo mật & chặn',
-                      trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
-                      isDark: isDark,
-                      onTap: () => _showPrivacySheet(context),
-                    ),
-                    Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
+                    // Thông báo
                     _buildSettingsTile(
                       icon: Icons.notifications_none_rounded,
                       title: 'Thông báo',
@@ -858,67 +654,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 4. GIAO DIỆN (Theme Selector Figma)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'GIAO DIỆN',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.6,
-                      color: textSecondary,
-                    ),
-                  ),
-                  Text(
-                    isDark ? 'Chế độ Tối' : 'Chế độ Sáng',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? AppColors.primaryLight : AppColors.primary,
-                    ),
-                  ),
-                ],
+              // 4. RIÊNG TƯ & BẢO MẬT (Figma exact heading)
+              Text(
+                'RIÊNG TƯ & BẢO MẬT',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: textSecondary,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
-              Row(
-                children: [
-                  // Lựa chọn Sáng
-                  Expanded(
-                    child: _buildThemeCard(
-                      title: 'Sáng',
-                      icon: Icons.wb_sunny_rounded,
-                      isSelected: !isDark,
+              Container(
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: borderColor, width: 0.8),
+                ),
+                child: Column(
+                  children: [
+                    // Bảo mật & Khóa PIN
+                    _buildSettingsTile(
+                      icon: Icons.shield_outlined,
+                      title: 'Bảo mật & Khóa PIN',
+                      subtitle: 'Đã bật',
+                      trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
-                      onTap: () => themeProvider.setThemeMode(ThemeMode.light),
+                      onTap: () async {
+                        final pin = await SecureKeypadSheet.show(
+                          context,
+                          title: 'Xác thực mã PIN bảo vệ',
+                          description: 'Nhập mã PIN gồm 6 số để quản lý bảo mật',
+                        );
+                        if (pin != null && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Mã PIN xác thực thành công!'),
+                              backgroundColor: AppColors.accentGreen,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Lựa chọn Tối
-                  Expanded(
-                    child: _buildThemeCard(
-                      title: 'Tối',
-                      icon: Icons.nightlight_round,
-                      isSelected: isDark,
+                    Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
+                    // Quyền riêng tư
+                    _buildSettingsTile(
+                      icon: Icons.lock_outline_rounded,
+                      title: 'Quyền riêng tư',
+                      subtitle: 'Kiểm soát ai có thể xem tin & bài viết của bạn',
+                      trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
-                      onTap: () => themeProvider.setThemeMode(ThemeMode.dark),
+                      onTap: () => _showPrivacySheet(context),
                     ),
-                  ),
-                ],
+                    Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
+                    // Đổi mật khẩu
+                    _buildSettingsTile(
+                      icon: Icons.lock_reset_rounded,
+                      title: 'Đổi mật khẩu',
+                      subtitle: 'Đổi mật khẩu tài khoản SupaChat',
+                      trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
+                      isDark: isDark,
+                      onTap: () => _showChangePasswordDialog(context),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
-              // 5. Nút Đăng xuất chuẩn Figma
+              // 5. Nút Đăng xuất chuẩn Figma (Logout card - 20px radius)
               GestureDetector(
                 onTap: () => _showLogoutDialog(context, authProvider),
                 child: Container(
-                  height: 48,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF35212D) : const Color(0xFFFDECEF),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.coralDanger.withValues(alpha: 0.2),
+                      width: 0.8,
+                    ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -929,7 +745,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Đăng xuất',
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.coralDanger,
                         ),
                       ),
@@ -937,24 +753,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // Bản quyền footer
+              // Bản quyền footer chuẩn Figma
               Center(
                 child: Text(
-                  'SupaChat • Gần nhau hơn, mỗi ngày',
+                  'SupaChat 1.0.0 · Được tạo nên từ những kết nối 💜',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    color: textSecondary.withValues(alpha: 0.6),
+                    color: textSecondary.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 32),
             ],
           ),
         ),
       ),
     );
+  }
   }
 
   Widget _buildSettingsTile({
@@ -1015,65 +834,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
-  Widget _buildThemeCard({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final cardBg = isDark
-        ? (isSelected ? AppColors.darkSecondary : AppColors.darkSurface)
-        : (isSelected ? AppColors.lightLavender : AppColors.surface);
-    final borderColor = isSelected
-        ? AppColors.primary
-        : (isDark ? AppColors.darkBorder : AppColors.border);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: borderColor,
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected
-                  ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                  : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? textPrimary : textPrimary.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -530,8 +530,26 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                   labelColor: AppColors.primary,
                   unselectedLabelColor: textSecondary,
                   tabs: const [
-                    Tab(icon: Icon(Icons.grid_on_rounded)),
-                    Tab(icon: Icon(Icons.library_music_rounded)),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.grid_on_rounded, size: 16),
+                          SizedBox(width: 6),
+                          Text('Bài viết', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.photo_library_outlined, size: 16),
+                          SizedBox(width: 6),
+                          Text('Phương tiện ảnh & nhạc', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 bg,

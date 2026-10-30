@@ -110,7 +110,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   onChanged: (_) => setState(() {}),
                   style: TextStyle(fontSize: 14, color: textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'Tìm kiếm bạn bè...',
+                    hintText: 'Tìm người bạn muốn kết nối',
                     hintStyle: TextStyle(fontSize: 14, color: textSecondary),
                     prefixIcon: Icon(Icons.search_rounded, size: 20, color: textSecondary),
                     border: InputBorder.none,

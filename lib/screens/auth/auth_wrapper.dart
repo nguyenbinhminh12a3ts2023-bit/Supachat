@@ -5,7 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../home/home_screen.dart';
-import 'login_screen.dart';
+import 'welcome_screen.dart';
 
 /// Cổng kiểm tra phiên đăng nhập tự động (Auth Gate / Auth Wrapper)
 class AuthWrapper extends StatelessWidget {
@@ -44,8 +44,8 @@ class AuthWrapper extends StatelessWidget {
           return const HomeScreen();
         }
 
-        // Chưa đăng nhập -> Vào màn hình Đăng nhập
-        return const LoginScreen();
+        // Chưa đăng nhập -> Vào màn hình Chào mừng chuẩn Figma
+        return const WelcomeScreen();
       },
     );
   }

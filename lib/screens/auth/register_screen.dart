@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../home/home_screen.dart';
+import 'login_screen.dart';
 
-/// Màn hình Đăng ký tài khoản chuẩn Figma (Screen 06: Đăng ký)
+/// Màn hình Đăng ký tài khoản chuẩn Figma SupaChat
+/// Figma: Register · Light (#5:62842) & Register · Dark (#5:63982)
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -66,7 +68,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (mounted) {
       if (success) {
-        Navigator.pop(context);
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
       } else if (authProvider.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -88,48 +94,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
     final inputBg = isDark ? AppColors.darkInputBg : AppColors.inputBg;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
-    final socialBtnBg = isDark ? AppColors.darkSurface : AppColors.surface;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
 
     return Scaffold(
       backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header Figma Screen 06
+                // Top Row: Back Chevron
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary, size: 20),
+                    onPressed: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Subtitle Badge
                 Text(
-                  'Tạo tài khoản mới',
+                  'BẮT ĐẦU KẾT NỐI',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: textPrimary,
-                    letterSpacing: -0.5,
+                    letterSpacing: 1.2,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 6),
+
+                // Main Heading
                 Text(
-                  'Gia nhập SupaChat, kết nối không giới hạn.',
+                  'Thế giới của bạn,\ngần hơn một chút.',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: textSecondary,
-                    fontWeight: FontWeight.w400,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    height: 1.25,
+                    color: textPrimary,
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 4),
+                Text(
+                  'Tạo tài khoản mới',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-                // 1. Họ và tên
+                // Field: Họ và tên (Tên của bạn)
                 Text(
                   'Họ và tên',
                   style: TextStyle(
@@ -143,26 +170,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _nameController,
                   style: TextStyle(color: textPrimary, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Nhập họ và tên hoặc biệt danh (Ví dụ: Hoàng Duy Mạnh)',
-                    helperText: 'Tên này sẽ hiển thị cho bạn bè thấy khi tìm kiếm, nhắn tin',
+                    hintText: 'Minh An',
                     prefixIcon: Icon(Icons.person_outline_rounded, color: textSecondary, size: 20),
                     filled: true,
                     fillColor: inputBg,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
                       return 'Vui lòng nhập họ và tên';
-                    }
-                    if (val.trim().length < 2) {
-                      return 'Tên phải có ít nhất 2 ký tự';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
 
-                // 2. Email
+                // Field: Email
                 Text(
                   'Email',
                   style: TextStyle(
@@ -177,26 +212,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   style: TextStyle(color: textPrimary, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'example@supachat.com',
+                    hintText: 'minhan@gmail.com',
                     prefixIcon: Icon(Icons.mail_outline_rounded, color: textSecondary, size: 20),
                     filled: true,
                     fillColor: inputBg,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                   ),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
                       return 'Vui lòng nhập email';
                     }
-                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!emailRegex.hasMatch(val.trim())) {
-                      return 'Địa chỉ email không hợp lệ';
+                    if (!val.contains('@') || !val.contains('.')) {
+                      return 'Email không hợp lệ';
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
 
-                // 3. Mật khẩu
+                // Field: Mật khẩu
                 Text(
                   'Mật khẩu',
                   style: TextStyle(
@@ -211,7 +257,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscurePassword,
                   style: TextStyle(color: textPrimary, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Tối thiểu 6 ký tự',
+                    hintText: '••••••••••',
                     prefixIcon: Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -223,10 +269,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     filled: true,
                     fillColor: inputBg,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                   ),
                   validator: (val) {
-                    if (val == null || val.isEmpty) {
+                    if (val == null || val.trim().isEmpty) {
                       return 'Vui lòng nhập mật khẩu';
                     }
                     if (val.length < 6) {
@@ -237,7 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 4. Xác nhận mật khẩu
+                // Field: Xác nhận mật khẩu
                 Text(
                   'Xác nhận mật khẩu',
                   style: TextStyle(
@@ -252,8 +310,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscureConfirmPassword,
                   style: TextStyle(color: textPrimary, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Nhập lại mật khẩu vừa tạo',
-                    prefixIcon: Icon(Icons.shield_outlined, color: textSecondary, size: 20),
+                    hintText: '••••••••••',
+                    prefixIcon: Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -264,166 +322,209 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     filled: true,
                     fillColor: inputBg,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                   ),
                   validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Vui lòng xác nhận mật khẩu';
+                    }
                     if (val != _passwordController.text) {
                       return 'Mật khẩu xác nhận không khớp';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 10),
 
-                // Nút Gradient Đăng ký
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.brandGradient,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                // Password strength indicator (Figma element)
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: AppColors.tealAccent, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Mật khẩu mạnh · Ít nhất 8 ký tự',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
                       ),
                     ),
-                    onPressed: authProvider.isLoading ? null : _handleRegister,
-                    child: authProvider.isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                          )
-                        : const Text(
-                            'Đăng ký',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Terms consent text
+                Text(
+                  'Bằng việc đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách quyền riêng tư của SupaChat.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: textSecondary,
                   ),
                 ),
                 const SizedBox(height: 20),
 
-                // Phân cách "hoặc đăng ký với"
+                // Button: Đăng ký
+                authProvider.isLoading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(color: AppColors.primary),
+                        ),
+                      )
+                    : InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: _handleRegister,
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.brandGradient,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Đăng ký',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                const SizedBox(height: 24),
+
+                // Divider: "hoặc tiếp tục với"
                 Row(
                   children: [
                     Expanded(child: Divider(color: borderColor, thickness: 1)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Text(
-                        'hoặc đăng ký với',
-                        style: TextStyle(fontSize: 12, color: textSecondary),
+                        'hoặc tiếp tục với',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     Expanded(child: Divider(color: borderColor, thickness: 1)),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
 
-                // Nút Mạng xã hội Google & Apple
+                // Social Providers: Google & Apple
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: socialBtnBg,
-                          side: BorderSide(color: borderColor),
-                          shape: RoundedRectangleBorder(
+                      child: InkWell(
+                        onTap: _handleGoogleSignUp,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: cardBg,
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: borderColor),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                        ),
-                        onPressed: _handleGoogleSignUp,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.network(
-                              'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                              width: 18,
-                              height: 18,
-                              errorBuilder: (_, _, _) => const Icon(Icons.g_mobiledata, size: 24),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Google',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.g_mobiledata_rounded, size: 28, color: Colors.redAccent),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Google',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: socialBtnBg,
-                          side: BorderSide(color: borderColor),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                        ),
-                        onPressed: () {
+                      child: InkWell(
+                        onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Đăng ký bằng Apple ID'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                            const SnackBar(content: Text('Đăng ký bằng Apple đang được bảo trì.')),
                           );
                         },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.apple, size: 20, color: textPrimary),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Apple',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.apple_rounded, size: 22, color: textPrimary),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Apple',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 26),
 
-                // Footer: Đã có tài khoản? Đăng nhập
+                // Bottom Link: "Đã là thành viên? Đăng nhập"
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Đã có tài khoản? ',
-                      style: TextStyle(fontSize: 13, color: textSecondary),
+                      'Đã là thành viên? ',
+                      style: TextStyle(fontSize: 14, color: textSecondary),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Text(
-                        'Đăng nhập ngay',
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'Đăng nhập',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.primaryLight : AppColors.primary,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),

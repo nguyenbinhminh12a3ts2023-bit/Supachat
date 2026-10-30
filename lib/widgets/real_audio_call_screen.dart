@@ -193,21 +193,50 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
               ),
             ),
 
-            // Recipient Profile
+            // Recipient Profile with Concentric Rings
             Column(
               children: [
                 Stack(
                   alignment: Alignment.center,
                   children: [
-                    if (!_isConnected)
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withValues(alpha: 0.15),
+                    // Outer Ring 3
+                    Container(
+                      width: 220,
+                      height: 220,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          width: 1.5,
                         ),
                       ),
+                    ),
+                    // Middle Ring 2
+                    Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.22),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    // Inner Ring 1 & Halo
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.35),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
                     AvatarWidget(
                       photoUrl: widget.otherUserAvatar,
                       name: widget.otherUserName,
@@ -222,63 +251,92 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    letterSpacing: -0.3,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _isConnected ? _formatDuration(_seconds) : _statusText,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isConnected)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.tealAccent,
+                        ),
+                      ),
+                    Text(
+                      _isConnected ? _formatDuration(_seconds) : _statusText,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: _isConnected ? FontWeight.w600 : FontWeight.normal,
+                        color: _isConnected ? AppColors.tealAccent : Colors.white60,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Âm thanh độ phân giải cao',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: _isConnected ? FontWeight.w600 : FontWeight.normal,
-                    color: _isConnected ? AppColors.tealAccent : Colors.white60,
+                    fontSize: 12,
+                    color: Colors.white38,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
 
-            // Call Controls
+            // Frosted Call Control Dock chuẩn Figma
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 40),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildControl(
-                        icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                        label: _isMuted ? 'Bật mic' : 'Tắt mic',
-                        isActive: _isMuted,
-                        onTap: () => setState(() => _isMuted = !_isMuted),
-                      ),
-                      _buildControl(
-                        icon: _isSpeaker ? Icons.volume_up_rounded : Icons.volume_down_rounded,
-                        label: 'Loa ngoài',
-                        isActive: _isSpeaker,
-                        onTap: () => setState(() => _isSpeaker = !_isSpeaker),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 36),
-                  GestureDetector(
-                    onTap: _endCall,
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: const BoxDecoration(
-                        color: AppColors.coralDanger,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.coralDanger,
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 34),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B1E2C).withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // 1. Tắt mic
+                    _buildControl(
+                      icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                      label: 'Tắt tiếng',
+                      isActive: _isMuted,
+                      onTap: () => setState(() => _isMuted = !_isMuted),
+                    ),
+                    // 2. Loa ngoài
+                    _buildControl(
+                      icon: _isSpeaker ? Icons.volume_up_rounded : Icons.volume_down_rounded,
+                      label: 'Loa ngoài',
+                      isActive: _isSpeaker,
+                      onTap: () => setState(() => _isSpeaker = !_isSpeaker),
+                    ),
+                    // 3. Tin nhắn
+                    _buildControl(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      label: 'Tin nhắn',
+                      isActive: false,
+                      onTap: () {
+                        if (mounted) Navigator.pop(context);
+                      },
+                    ),
+                    // 4. Kết thúc cuộc gọi
+                    _buildEndCallControl(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -316,6 +374,41 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
         Text(
           label,
           style: const TextStyle(fontSize: 12, color: Colors.white70),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEndCallControl() {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: _endCall,
+          child: Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.coralDanger,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.coralDanger.withValues(alpha: 0.4),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.call_end_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Kết thúc',
+          style: TextStyle(fontSize: 12, color: AppColors.coralDanger, fontWeight: FontWeight.w600),
         ),
       ],
     );

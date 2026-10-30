@@ -337,28 +337,49 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.close_rounded, color: textPrimary),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              widget.onPostSuccess?.call();
+            }
+          },
+        ),
         title: Text(
-          'Tạo bài viết mới',
+          'Tạo bài viết',
           style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: InkWell(
+              onTap: _isPosting ? null : _handlePost,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: AppColors.brandGradient,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: _isPosting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          'Đăng',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                ),
               ),
-              onPressed: _isPosting ? null : _handlePost,
-              child: _isPosting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Đăng bài', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -440,8 +461,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       minLines: 4,
                       style: TextStyle(fontSize: 16, color: textPrimary, height: 1.4),
                       decoration: InputDecoration(
-                        hintText: 'Bạn đang nghĩ gì thế?... Hãy chia sẻ khoảnh khắc của bạn!',
-                        hintStyle: TextStyle(color: textSecondary, fontSize: 16),
+                        hintText: 'Một chút bình yên, một chút nhạc.\nCuối tuần của bạn thế nào? ✨',
+                        hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 16),
                         border: InputBorder.none,
                       ),
                     ),
@@ -534,38 +555,103 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
 
-            // Toolbar đính kèm phía dưới
+            // Toolbar đính kèm phía dưới chuẩn Figma
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: cardBg,
                 border: Border(top: BorderSide(color: borderColor, width: 0.8)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Thêm vào bài viết:',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textSecondary),
+                    'Thêm vào bài viết của bạn',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
                   ),
-                  const Spacer(),
-                  // Nút ảnh
-                  IconButton(
-                    icon: const Icon(Icons.image_outlined, color: AppColors.accentGreen, size: 26),
-                    tooltip: 'Đính kèm ảnh',
-                    onPressed: _pickImage,
-                  ),
-                  // Nút nhạc
-                  IconButton(
-                    icon: Icon(
-                      Icons.music_note_rounded,
-                      color: _selectedMusic != null ? AppColors.primary : AppColors.primaryLight,
-                      size: 26,
-                    ),
-                    tooltip: 'Đính kèm nhạc',
-                    onPressed: _showMusicSelector,
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildAttachmentOption(
+                        icon: Icons.image_outlined,
+                        label: 'Ảnh / Video',
+                        color: AppColors.tealAccent,
+                        onTap: _pickImage,
+                        textPrimary: textPrimary,
+                        isDark: isDark,
+                      ),
+                      _buildAttachmentOption(
+                        icon: Icons.mic_none_rounded,
+                        label: 'Ghi âm',
+                        color: AppColors.coralDanger,
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Tính năng ghi âm giọng nói đang bật.')),
+                          );
+                        },
+                        textPrimary: textPrimary,
+                        isDark: isDark,
+                      ),
+                      _buildAttachmentOption(
+                        icon: Icons.sentiment_satisfied_alt_outlined,
+                        label: 'Sticker',
+                        color: AppColors.primaryLight,
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Mở bộ nhãn dán Supa Friends.')),
+                          );
+                        },
+                        textPrimary: textPrimary,
+                        isDark: isDark,
+                      ),
+                      _buildAttachmentOption(
+                        icon: Icons.music_note_rounded,
+                        label: 'Âm nhạc',
+                        color: AppColors.electricBlue,
+                        onTap: _showMusicSelector,
+                        textPrimary: textPrimary,
+                        isDark: isDark,
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    required Color textPrimary,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Column(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isDark ? 0.2 : 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: textPrimary),
             ),
           ],
         ),

@@ -342,7 +342,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                     ),
                     const SizedBox(height: 12),
 
-                    // User Info row
+                    // User Info row (Figma exact: Avatar, Name, time, ellipsis, close)
                     Row(
                       children: [
                         AvatarWidget(
@@ -365,18 +365,28 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                               ),
                             ),
                             if (story.musicTrackTitle != null)
-                              Row(
-                                children: [
-                                  const Icon(Icons.music_note, color: AppColors.primaryLight, size: 12),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${story.musicTrackTitle} • ${story.musicTrackArtist ?? ''}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 11,
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.black38,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.music_note_rounded, color: AppColors.primaryLight, size: 12),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${story.musicTrackTitle} • ${story.musicTrackArtist ?? ''}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                           ],
                         ),
@@ -395,6 +405,80 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 4. Quick Reply Bottom Bar chuẩn Figma (Reply input, heart reaction, send)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 24,
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 46,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white24, width: 0.8),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                onTap: () => _pause(),
+                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                decoration: const InputDecoration(
+                                  hintText: 'Gửi tin nhắn...',
+                                  hintStyle: TextStyle(color: Colors.white60, fontSize: 13),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                                onSubmitted: (val) {
+                                  _resume();
+                                  if (val.trim().isNotEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Đã gửi phản hồi đến ${story.userName}'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Nút thả tim
+                    InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Đã thả ❤️ cho tin của ${story.userName}!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 0.8),
+                        ),
+                        child: const Icon(Icons.favorite_rounded, color: AppColors.coralDanger, size: 22),
+                      ),
                     ),
                   ],
                 ),

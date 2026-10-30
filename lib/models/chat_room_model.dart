@@ -18,6 +18,16 @@ class ChatRoomModel {
     this.unreadCounts = const {},
   });
 
+  /// Lấy ID của đối phương trong phòng chat
+  String getOtherUserId(String myId) {
+    return participants.firstWhere((id) => id != myId, orElse: () => '');
+  }
+
+  /// Lấy số tin nhắn chưa đọc của người dùng hiện tại
+  int getUnreadCount(String myId) {
+    return unreadCounts[myId] ?? 0;
+  }
+
   /// Chuyển đổi sang Map để lưu trên Firestore
   Map<String, dynamic> toMap() {
     return {

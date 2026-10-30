@@ -521,7 +521,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
                                   },
                                   onSubmitted: (_) => _handleSend(),
                                   decoration: InputDecoration(
-                                    hintText: 'Nhắn tin...',
+                                    hintText: 'Nhập tin nhắn...',
                                     hintStyle: TextStyle(fontSize: 14, color: textSecondary),
                                     border: InputBorder.none,
                                     enabledBorder: InputBorder.none,

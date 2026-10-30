@@ -288,17 +288,17 @@ class _MessageBubbleState extends State<MessageBubble> {
                     gradient: isMe ? AppColors.brandGradient : null,
                     color: isMe
                         ? null
-                        : (isDark ? AppColors.darkSurface : Colors.white),
+                        : (isDark ? AppColors.darkInputBg : AppColors.lightLavender),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(20),
                       topRight: const Radius.circular(20),
-                      bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
-                      bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
+                      bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(6),
+                      bottomRight: isMe ? const Radius.circular(6) : const Radius.circular(20),
                     ),
                     border: isMe
                         ? null
                         : Border.all(
-                            color: isDark ? AppColors.darkBorder : AppColors.border,
+                            color: isDark ? AppColors.darkBorder : const Color(0xFFDCD8FB),
                             width: 0.8,
                           ),
                     boxShadow: [

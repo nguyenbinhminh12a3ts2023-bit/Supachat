@@ -173,7 +173,7 @@ class AuthService {
         final docRef = _firestore.collection('users').doc(user.uid);
         DocumentSnapshot? doc;
         try {
-          doc = await docRef.get().timeout(const Duration(seconds: 4));
+          doc = await docRef.get().timeout(const Duration(seconds: 12));
         } catch (_) {}
 
         if (doc != null && doc.exists) {
@@ -182,7 +182,7 @@ class AuthService {
               'isOnline': true,
               'lastSeen': FieldValue.serverTimestamp(),
               if (user.photoURL != null) 'photoUrl': user.photoURL,
-            }, SetOptions(merge: true)).timeout(const Duration(seconds: 3));
+            }, SetOptions(merge: true)).timeout(const Duration(seconds: 10));
           } catch (_) {}
           return UserModel.fromDocument(doc);
         } else {
@@ -197,7 +197,7 @@ class AuthService {
             createdAt: DateTime.now(),
           );
           try {
-            await docRef.set(newUser.toMap()).timeout(const Duration(seconds: 3));
+            await docRef.set(newUser.toMap()).timeout(const Duration(seconds: 10));
           } catch (_) {}
           return newUser;
         }
@@ -225,7 +225,7 @@ class AuthService {
 
       DocumentSnapshot? userDoc;
       try {
-        userDoc = await _firestore.collection('users').doc(user.uid).get().timeout(const Duration(seconds: 4));
+        userDoc = await _firestore.collection('users').doc(user.uid).get().timeout(const Duration(seconds: 12));
       } catch (_) {}
 
       if (userDoc == null || !userDoc.exists) {
@@ -241,7 +241,7 @@ class AuthService {
           createdAt: DateTime.now(),
         );
         try {
-          await _firestore.collection('users').doc(user.uid).set(newUser.toMap()).timeout(const Duration(seconds: 3));
+          await _firestore.collection('users').doc(user.uid).set(newUser.toMap()).timeout(const Duration(seconds: 10));
         } catch (_) {}
         return newUser;
       } else {
@@ -251,7 +251,7 @@ class AuthService {
             'isOnline': true,
             'lastSeen': FieldValue.serverTimestamp(),
             if (user.photoURL != null) 'photoUrl': user.photoURL,
-          }).timeout(const Duration(seconds: 3));
+          }).timeout(const Duration(seconds: 10));
         } catch (_) {}
         return UserModel.fromDocument(userDoc);
       }
@@ -434,6 +434,8 @@ class AuthService {
         return 'Quá nhiều lần thử thất bại. Vui lòng đợi trong giây lát và thử lại.';
       case 'network-request-failed':
         return 'Lỗi kết nối mạng. Vui lòng kiểm tra lại kết nối.';
+      case 'unauthorized-domain':
+        return 'Tên miền này chưa được thêm vào Authorized Domains trong Firebase Console. Vui lòng đăng nhập bằng Email / Mật khẩu hoặc thêm tên miền vào Firebase Console.';
       default:
         return fallbackMessage ?? 'Đã xảy ra lỗi xác thực. Mã lỗi: $code';
     }

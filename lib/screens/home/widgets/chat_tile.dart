@@ -12,11 +12,13 @@ class ChatTile extends StatelessWidget {
   static final AuthService _authService = AuthService();
   final ChatRoomModel chatRoom;
   final String currentUserId;
+  final VoidCallback? onTap;
 
   const ChatTile({
     super.key,
     required this.chatRoom,
     required this.currentUserId,
+    this.onTap,
   });
 
   String _formatDate(DateTime date) {
@@ -58,7 +60,7 @@ class ChatTile extends StatelessWidget {
         final isOnline = otherUser?.isOnline ?? false;
 
         return InkWell(
-          onTap: () {
+          onTap: onTap ?? () {
             if (otherUser != null) {
               Navigator.push(
                 context,

@@ -14,14 +14,15 @@ class StoryService {
   Stream<List<StoryModel>> getActiveStoriesStream() {
     return _firestore
         .collection('stories')
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
       final now = DateTime.now();
-      return snapshot.docs
+      final list = snapshot.docs
           .map((doc) => StoryModel.fromFirestore(doc))
           .where((story) => story.expiresAt.isAfter(now))
           .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
     });
   }
 
