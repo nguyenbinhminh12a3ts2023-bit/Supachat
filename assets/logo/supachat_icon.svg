@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="512" height="512">
+  <defs>
+    <linearGradient id="supaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A90E2"/>
+      <stop offset="50%" stop-color="#6BA4B8"/>
+      <stop offset="100%" stop-color="#78B0A0"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <g>
+    <!-- Coastal Speech Bubble -->
+    <path d="M 191.29 49.30 A 190.00 190.00 0 1 1 80.71 316.26 Q 110.00 340.00 80.00 420.00 Q 140.00 410.00 205.92 45.19"
+          fill="none" stroke="url(#supaGradient)" stroke-width="60.00"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Top Ocean Wave -->
+    <path d="M 160.00 210.00 C 210.00 170.00 260.00 240.00 340.00 190.00"
+          fill="none" stroke="url(#supaGradient)" stroke-width="57.00"
+          stroke-linecap="round"/>
+    <!-- Bottom Ocean Wave -->
+    <path d="M 180.00 270.00 C 230.00 230.00 280.00 300.00 320.00 250.00"
+          fill="none" stroke="url(#supaGradient)" stroke-width="57.00"
+          stroke-linecap="round"/>
+  </g>
+</svg>

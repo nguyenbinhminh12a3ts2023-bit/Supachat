@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240">
+  <defs>
+    <linearGradient id="supaGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4A90E2"/>
+      <stop offset="50%" stop-color="#6BA4B8"/>
+      <stop offset="100%" stop-color="#78B0A0"/>
+    </linearGradient>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A90E2"/>
+      <stop offset="50%" stop-color="#6BA4B8"/>
+      <stop offset="100%" stop-color="#78B0A0"/>
+    </linearGradient>
+  </defs>
+  <!-- Icon on left -->
+  <g transform="translate(30, 25) scale(0.38)">
+    <path d="M 191.29 49.30 A 190.00 190.00 0 1 1 80.71 316.26 Q 110.00 340.00 80.00 420.00 Q 140.00 410.00 205.92 45.19"
+          fill="none" stroke="url(#iconGradient)" stroke-width="60.00"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 160.00 210.00 C 210.00 170.00 260.00 240.00 340.00 190.00"
+          fill="none" stroke="url(#iconGradient)" stroke-width="57.00"
+          stroke-linecap="round"/>
+    <path d="M 180.00 270.00 C 230.00 230.00 280.00 300.00 320.00 250.00"
+          fill="none" stroke="url(#iconGradient)" stroke-width="57.00"
+          stroke-linecap="round"/>
+  </g>
+  <!-- Brand Text -->
+  <text x="250" y="145" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="88" font-weight="800" letter-spacing="-1.5" fill="url(#supaGradient)">Supa</text>
+  <text x="458" y="145" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="88" font-weight="600" letter-spacing="-1" fill="#1E293B">Chat</text>
+  <text x="254" y="190" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="20" font-weight="500" letter-spacing="3" fill="#546E7A" text-transform="uppercase">COASTAL CONNECT</text>
+</svg>

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "725465702601",
+    "project_id": "supachat-n1523dthc7",
+    "storage_bucket": "supachat-n1523dthc7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:725465702601:android:68f43b2c2d0fbe6ca5ed18",
+        "android_client_info": {
+          "package_name": "com.supachat.nhom15.supachat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "725465702601-hqhh9hkmc539pfllr8b66u9dbdo5upjp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_2f1j2BXkUAb-UT2EZusl2bazIawB2mU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "725465702601-hqhh9hkmc539pfllr8b66u9dbdo5upjp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

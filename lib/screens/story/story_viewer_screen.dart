@@ -1,0 +1,408 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/music_tracks.dart';
+import '../../models/story_model.dart';
+import '../../services/audio_player_service.dart';
+import '../../services/story_service.dart';
+import '../../widgets/avatar_widget.dart';
+
+/// Trình xem Tin (Story Viewer) chuẩn Instagram / Facebook
+class StoryViewerScreen extends StatefulWidget {
+  final List<StoryModel> stories;
+  final int initialIndex;
+  final String currentUserId;
+
+  const StoryViewerScreen({
+    super.key,
+    required this.stories,
+    this.initialIndex = 0,
+    required this.currentUserId,
+  });
+
+  @override
+  State<StoryViewerScreen> createState() => _StoryViewerScreenState();
+}
+
+class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTickerProviderStateMixin {
+  late int _currentIndex;
+  late AnimationController _progressController;
+  final StoryService _storyService = StoryService();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _goToNextStory();
+        }
+      });
+
+    _loadCurrentStory();
+  }
+
+  void _loadCurrentStory() {
+    if (_currentIndex >= widget.stories.length) {
+      Navigator.pop(context);
+      return;
+    }
+
+    final story = widget.stories[_currentIndex];
+
+    // Đánh dấu đã xem
+    _storyService.markStoryAsViewed(story.id, widget.currentUserId);
+
+    // Phát nhạc nếu story có nhạc
+    if (story.musicTrackUrl != null && story.musicTrackUrl!.isNotEmpty) {
+      final track = MusicTrack(
+        id: story.id,
+        title: story.musicTrackTitle ?? 'Story Music',
+        artist: story.musicTrackArtist ?? 'SupaChat Music',
+        audioUrl: story.musicTrackUrl!,
+        coverUrl: story.userAvatar ?? 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150',
+        duration: '00:30',
+      );
+      AudioPlayerService.instance.playTrack(track, startSeconds: story.musicStartTime);
+    }
+
+    _progressController.stop();
+    _progressController.reset();
+    _progressController.forward();
+  }
+
+  void _goToNextStory() {
+    if (_currentIndex < widget.stories.length - 1) {
+      setState(() {
+        _currentIndex++;
+      });
+      _loadCurrentStory();
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  void _goToPrevStory() {
+    if (_currentIndex > 0) {
+      setState(() {
+        _currentIndex--;
+      });
+      _loadCurrentStory();
+    } else {
+      _progressController.reset();
+      _progressController.forward();
+    }
+  }
+
+  void _pause() {
+    _progressController.stop();
+  }
+
+  void _resume() {
+    _progressController.forward();
+  }
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    AudioPlayerService.instance.stopTrack();
+    super.dispose();
+  }
+
+  Color _hexToColor(String hex) {
+    try {
+      final buffer = StringBuffer();
+      if (hex.length == 6 || hex.length == 7) buffer.write('ff');
+      buffer.write(hex.replaceFirst('#', ''));
+      return Color(int.parse(buffer.toString(), radix: 16));
+    } catch (_) {
+      return AppColors.primary;
+    }
+  }
+
+  Future<void> _deleteStory(StoryModel story) async {
+    _pause();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1B1E2C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Xóa tin?', style: TextStyle(color: Colors.white)),
+        content: const Text('Bạn có chắc muốn xóa tin này không?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.coralDanger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _storyService.deleteStory(story.id);
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } else {
+      _resume();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_currentIndex >= widget.stories.length) return const SizedBox.shrink();
+    final story = widget.stories[_currentIndex];
+    final isMyStory = story.userId == widget.currentUserId;
+    final bgColor = _hexToColor(story.backgroundColor);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTapDown: (_) => _pause(),
+        onTapUp: (details) {
+          _resume();
+          final screenWidth = MediaQuery.of(context).size.width;
+          if (details.localPosition.dx < screenWidth * 0.35) {
+            _goToPrevStory();
+          } else {
+            _goToNextStory();
+          }
+        },
+        onLongPressStart: (_) => _pause(),
+        onLongPressEnd: (_) => _resume(),
+        child: Stack(
+          children: [
+            // 1. Nền Story (Full Screen Canvas: Ảnh nền hoặc Gradient)
+            Positioned.fill(
+              child: story.imageUrl != null
+                  ? Image.network(
+                      story.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (_, _, _) => Container(
+                        color: bgColor,
+                        child: const Center(
+                          child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            bgColor,
+                            bgColor.withValues(alpha: 0.82),
+                            const Color(0xFF10121C),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+            ),
+
+            // Lớp phủ bóng gradient để text và header nổi bật
+            if (story.imageUrl != null)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.5),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.6),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+            // 2. Chữ hiển thị đúng vị trí người dùng đã kéo thả
+            if (story.caption.isNotEmpty)
+              Align(
+                alignment: Alignment(story.textPositionX, story.textPositionY),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: story.textStyle == 'normal'
+                      ? const EdgeInsets.symmetric(horizontal: 14, vertical: 8)
+                      : const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: story.textStyle == 'darkPill'
+                      ? BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.white24),
+                        )
+                      : story.textStyle == 'lightPill'
+                          ? BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                              ],
+                            )
+                          : null,
+                  child: Text(
+                    story.caption,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: story.textStyle == 'lightPill' ? Colors.black87 : Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      shadows: story.textStyle == 'normal'
+                          ? const [
+                              Shadow(color: Colors.black87, blurRadius: 12, offset: Offset(0, 2)),
+                              Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+
+            // Stickers nếu có
+            if (story.stickers.isNotEmpty)
+              Positioned(
+                top: 140,
+                left: 20,
+                right: 20,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: story.stickers.map((st) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white38),
+                      ),
+                      child: Text(
+                        st,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+            // Top Header: Progress bars & User Info
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Thanh tiến trình
+                    Row(
+                      children: List.generate(widget.stories.length, (idx) {
+                        return Expanded(
+                          child: Container(
+                            height: 3,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white30,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            child: idx < _currentIndex
+                                ? Container(color: Colors.white)
+                                : idx == _currentIndex
+                                    ? AnimatedBuilder(
+                                        animation: _progressController,
+                                        builder: (ctx, child) {
+                                          return FractionallySizedBox(
+                                            alignment: Alignment.centerLeft,
+                                            widthFactor: _progressController.value,
+                                            child: Container(color: Colors.white),
+                                          );
+                                        },
+                                      )
+                                    : const SizedBox.shrink(),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // User Info row
+                    Row(
+                      children: [
+                        AvatarWidget(
+                          photoUrl: story.userAvatar,
+                          name: story.userName,
+                          radius: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              story.userName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                              ),
+                            ),
+                            if (story.musicTrackTitle != null)
+                              Row(
+                                children: [
+                                  const Icon(Icons.music_note, color: AppColors.primaryLight, size: 12),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${story.musicTrackTitle} • ${story.musicTrackArtist ?? ''}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                        const Spacer(),
+
+                        // Delete button if my story
+                        if (isMyStory)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
+                            onPressed: () => _deleteStory(story),
+                          ),
+
+                        // Close button
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
