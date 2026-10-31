@@ -91,7 +91,13 @@ class AuthProvider with ChangeNotifier {
     if (user != null) {
       final remoteProfile = await _authService.getUserProfile(user.uid);
       if (remoteProfile != null) {
-        _currentUserModel = remoteProfile;
+        final existingAvatar = _currentUserModel?.photoUrl;
+        final remoteAvatar = remoteProfile.photoUrl;
+        final finalAvatar = (remoteAvatar != null && remoteAvatar.trim().isNotEmpty)
+            ? remoteAvatar
+            : ((existingAvatar != null && existingAvatar.trim().isNotEmpty) ? existingAvatar : user.photoURL);
+
+        _currentUserModel = remoteProfile.copyWith(photoUrl: finalAvatar);
         await _saveLocalUserProfile(_currentUserModel!);
       } else {
         _currentUserModel ??= UserModel(
@@ -248,6 +254,9 @@ class AuthProvider with ChangeNotifier {
         debugPrint('Tải ảnh đại diện qua storage lỗi, lưu base64: $e');
         final b64 = base64Encode(bytes);
         downloadUrl = 'data:image/png;base64,$b64';
+        try {
+          await _authService.updateProfile(photoUrl: downloadUrl);
+        } catch (_) {}
       }
 
       final fallbackEmail = _authService.currentUser?.email ?? _currentUserModel?.email ?? 'user@supachat.com';

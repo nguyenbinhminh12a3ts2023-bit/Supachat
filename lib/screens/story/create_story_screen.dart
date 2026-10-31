@@ -525,6 +525,25 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       return;
     }
 
+        // Kiểm tra giới hạn 5 tin/ngày
+    final authProv = Provider.of<AuthProvider>(context, listen: false);
+    final uid = authProv.currentUserModel?.uid;
+    if (uid != null) {
+      final count = await _storyService.getTodayStoriesCount(uid);
+      if (count >= 5) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Hôm nay bạn đã đăng đủ 5 tin (giới hạn tối đa 5 tin/ngày). Hãy quay lại sau 24h nhé!'),
+              backgroundColor: AppColors.coralDanger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     final screenSize = MediaQuery.of(context).size;
     setState(() => _isUploading = true);
 

@@ -1,3 +1,4 @@
+import '../../providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
@@ -174,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkBackground : AppColors.background;
     final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
@@ -237,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     index: 0,
                     icon: Icons.home_outlined,
                     activeIcon: Icons.home_rounded,
-                    label: 'Bảng tin',
+                    label: localeProvider.t('Bảng tin', 'Feed'),
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
                   ),
@@ -247,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     index: 1,
                     icon: Icons.forum_outlined,
                     activeIcon: Icons.forum_rounded,
-                    label: 'Tin nhắn',
+                    label: localeProvider.t('Tin nhắn', 'Messages'),
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
                     hasUnreadBadge: true,
@@ -281,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     index: 3,
                     icon: Icons.people_outline_rounded,
                     activeIcon: Icons.people_rounded,
-                    label: 'Bạn bè',
+                    label: localeProvider.t('Bạn bè', 'Friends'),
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
                   ),
@@ -291,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     index: 4,
                     icon: Icons.settings_outlined,
                     activeIcon: Icons.settings_rounded,
-                    label: 'Cài đặt',
+                    label: localeProvider.t('Cài đặt', 'Settings'),
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
                   ),
@@ -436,13 +438,13 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
             child: Row(
               children: [
-                _buildFilterChip('Tất cả', 0, isDark),
+                _buildFilterChip(Provider.of<LocaleProvider>(context).t('Tất cả', 'All'), 0, isDark),
                 const SizedBox(width: 8),
-                _buildFilterChip('Chưa đọc', 1, isDark),
+                _buildFilterChip(Provider.of<LocaleProvider>(context).t('Chưa đọc', 'Unread'), 1, isDark),
                 const SizedBox(width: 8),
-                _buildFilterChip('Gần đây', 2, isDark),
+                _buildFilterChip(Provider.of<LocaleProvider>(context).t('Gần đây', 'Recent'), 2, isDark),
                 const SizedBox(width: 8),
-                _buildFilterChip('Nhóm', 3, isDark),
+                _buildFilterChip(Provider.of<LocaleProvider>(context).t('Nhóm', 'Groups'), 3, isDark),
               ],
             ),
           ),

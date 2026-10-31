@@ -9,6 +9,7 @@ import '../../widgets/avatar_widget.dart';
 import '../../widgets/secure_keypad_sheet.dart';
 import '../auth/login_screen.dart';
 import '../profile/profile_screen.dart';
+import '../story/story_archive_screen.dart';
 
 /// Màn hình Cài đặt chuẩn Figma (Screen 18: Cài đặt)
 class SettingsScreen extends StatefulWidget {
@@ -498,7 +499,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(loc.t('Đã chuyển ngôn ngữ sang \$name', 'Language changed to \$name')),
+              content: Text(loc.t('Đã chuyển ngôn ngữ sang $name', 'Language changed to $name')),
               backgroundColor: AppColors.accentGreen,
               behavior: SnackBarBehavior.floating,
             ),
@@ -618,7 +619,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'Cài đặt',
+                  localeProvider.t('Cài đặt', 'Settings'),
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -671,7 +672,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Xem trang cá nhân của bạn',
+                              localeProvider.t('Xem trang cá nhân của bạn', 'View your profile'),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: textSecondary,
@@ -690,7 +691,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // 3. TRẢI NGHIỆM CỦA BẠN (Figma exact heading)
               Text(
-                'TRẢI NGHIỆM CỦA BẠN',
+                localeProvider.t('TRẢI NGHIỆM CỦA BẠN', 'YOUR EXPERIENCE'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -711,8 +712,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // Chế độ tối
                     _buildSettingsTile(
                       icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                      title: 'Chế độ tối',
-                      subtitle: isDark ? 'Đang bật' : 'Đang tắt',
+                      title: localeProvider.t('Chế độ tối', 'Dark Mode'),
+                      subtitle: isDark ? localeProvider.t('Đang bật', 'Enabled') : localeProvider.t('Đang tắt', 'Disabled'),
                       trailing: Switch.adaptive(
                         value: isDark,
                         activeTrackColor: AppColors.primary,
@@ -740,8 +741,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // Thông báo
                     _buildSettingsTile(
                       icon: Icons.notifications_none_rounded,
-                      title: 'Thông báo',
-                      subtitle: _notificationsEnabled ? 'Đang bật' : 'Đang tắt',
+                      title: localeProvider.t('Thông báo', 'Notifications'),
+                      subtitle: _notificationsEnabled ? localeProvider.t('Đang bật', 'Enabled') : localeProvider.t('Đang tắt', 'Disabled'),
                       trailing: Switch.adaptive(
                         value: _notificationsEnabled,
                         activeTrackColor: AppColors.primary,
@@ -757,7 +758,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // 4. RIÊNG TƯ & BẢO MẬT (Figma exact heading)
               Text(
-                'RIÊNG TƯ & BẢO MẬT',
+                localeProvider.t('RIÊNG TƯ & BẢO MẬT', 'PRIVACY & SECURITY'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -778,8 +779,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // Bảo mật & Khóa PIN
                     _buildSettingsTile(
                       icon: Icons.shield_outlined,
-                      title: 'Bảo mật & Khóa PIN',
-                      subtitle: 'Đã bật',
+                      title: localeProvider.t('Bảo mật & Khóa PIN', 'Security & PIN Lock'),
+                      subtitle: localeProvider.t('Đã bật', 'Enabled'),
                       trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
                       onTap: () async {
@@ -803,18 +804,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // Quyền riêng tư
                     _buildSettingsTile(
                       icon: Icons.lock_outline_rounded,
-                      title: 'Quyền riêng tư',
-                      subtitle: 'Kiểm soát ai có thể xem tin & bài viết của bạn',
+                      title: localeProvider.t('Quyền riêng tư', 'Privacy'),
+                      subtitle: localeProvider.t('Kiểm soát ai có thể xem tin & bài viết của bạn', 'Control who can view your stories & posts'),
                       trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
                       onTap: () => _showPrivacySheet(context),
                     ),
                     Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
+                    // Kho lưu trữ tin
+                    _buildSettingsTile(
+                      icon: Icons.auto_stories_outlined,
+                      title: localeProvider.t('Kho lưu trữ tin', 'Story Archive'),
+                      subtitle: localeProvider.t('Xem lại toàn bộ tin 24h bạn đã từng đăng', 'Review all your past 24h stories'),
+                      trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const StoryArchiveScreen()),
+                        );
+                      },
+                    ),
+                    Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
                     // Đổi mật khẩu
                     _buildSettingsTile(
                       icon: Icons.lock_reset_rounded,
-                      title: 'Đổi mật khẩu',
-                      subtitle: 'Đổi mật khẩu tài khoản SupaChat',
+                      title: localeProvider.t('Đổi mật khẩu', 'Change Password'),
+                      subtitle: localeProvider.t('Đổi mật khẩu tài khoản SupaChat', 'Change your SupaChat password'),
                       trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
                       onTap: () => _showChangePasswordDialog(context),
@@ -842,8 +858,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       const Icon(Icons.logout_rounded, color: AppColors.coralDanger, size: 20),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Đăng xuất',
+                      Text(
+                        localeProvider.t('Đăng xuất', 'Log Out'),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,

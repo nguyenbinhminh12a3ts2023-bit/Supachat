@@ -1,3 +1,5 @@
+import '../../providers/locale_provider.dart';
+import '../story/story_archive_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -211,6 +213,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkBackground : AppColors.background;
     final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
@@ -227,7 +230,7 @@ class _FeedScreenState extends State<FeedScreen> {
         backgroundColor: bg,
         elevation: 0,
         title: Text(
-          'Bảng tin',
+          localeProvider.t('Bảng tin', 'Feed'),
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,
@@ -330,7 +333,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Bảng tin chưa có bài viết nào',
+                                localeProvider.t('Bảng tin chưa có bài viết nào', 'No posts on feed yet'),
                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
                               ),
                               const SizedBox(height: 8),
@@ -348,7 +351,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                 ),
                                 icon: const Icon(Icons.add_rounded),
-                                label: const Text('Tạo bài viết ngay'),
+                                label: Text(localeProvider.t('Tạo bài viết ngay', 'Create post now')),
                                 onPressed: () {
                                   Navigator.push(
                                     context,
@@ -504,7 +507,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Tin của bạn',
+                      Provider.of<LocaleProvider>(context).t('Tin của bạn', 'Your Story'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

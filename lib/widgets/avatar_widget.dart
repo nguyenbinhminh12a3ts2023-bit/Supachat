@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
@@ -31,28 +32,41 @@ class AvatarWidget extends StatelessWidget {
         !photoUrl!.contains('default_avatar');
 
     if (hasCustomPhoto) {
-      final cacheSize = (radius * 3).round();
-      avatarContent = CachedNetworkImage(
-        imageUrl: photoUrl!,
-        memCacheWidth: cacheSize > 0 ? cacheSize : 120,
-        memCacheHeight: cacheSize > 0 ? cacheSize : 120,
-        maxWidthDiskCache: cacheSize * 2,
-        maxHeightDiskCache: cacheSize * 2,
-        imageBuilder: (context, imageProvider) => CircleAvatar(
-          radius: radius,
-          backgroundImage: imageProvider,
-        ),
-        placeholder: (context, url) => CircleAvatar(
-          radius: radius,
-          backgroundColor: AppColors.primaryLight.withValues(alpha: 0.3),
-          child: SizedBox(
-            width: radius,
-            height: radius,
-            child: const CircularProgressIndicator(strokeWidth: 2),
+      if (photoUrl!.startsWith('data:image')) {
+        try {
+          final base64Str = photoUrl!.contains(',') ? photoUrl!.split(',').last : photoUrl!;
+          final bytes = base64Decode(base64Str);
+          avatarContent = CircleAvatar(
+            radius: radius,
+            backgroundImage: MemoryImage(bytes),
+          );
+        } catch (_) {
+          avatarContent = _buildDefaultAvatar();
+        }
+      } else {
+        final cacheSize = (radius * 3).round();
+        avatarContent = CachedNetworkImage(
+          imageUrl: photoUrl!,
+          memCacheWidth: cacheSize > 0 ? cacheSize : 120,
+          memCacheHeight: cacheSize > 0 ? cacheSize : 120,
+          maxWidthDiskCache: cacheSize * 2,
+          maxHeightDiskCache: cacheSize * 2,
+          imageBuilder: (context, imageProvider) => CircleAvatar(
+            radius: radius,
+            backgroundImage: imageProvider,
           ),
-        ),
-        errorWidget: (context, url, error) => _buildDefaultAvatar(),
-      );
+          placeholder: (context, url) => CircleAvatar(
+            radius: radius,
+            backgroundColor: AppColors.primaryLight.withValues(alpha: 0.3),
+            child: SizedBox(
+              width: radius,
+              height: radius,
+              child: const CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          errorWidget: (context, url, error) => _buildDefaultAvatar(),
+        );
+      }
     } else {
       avatarContent = _buildDefaultAvatar();
     }

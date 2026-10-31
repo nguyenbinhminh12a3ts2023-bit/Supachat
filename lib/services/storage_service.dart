@@ -127,8 +127,8 @@ class StorageService {
       final ref = _storage.ref().child('posts').child('$timestamp.jpg');
       final metadata = SettableMetadata(contentType: 'image/jpeg');
 
-      final uploadTask = await ref.putData(optimizedBytes, metadata).timeout(const Duration(seconds: 12));
-      final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 8));
+      final uploadTask = await ref.putData(optimizedBytes, metadata).timeout(const Duration(seconds: 4));
+      final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 3));
       return downloadUrl;
     } catch (e) {
       debugPrint('Lưu ý upload ảnh lên Storage: $e');
