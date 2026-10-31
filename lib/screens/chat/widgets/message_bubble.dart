@@ -623,7 +623,15 @@ class _MessageBubbleState extends State<MessageBubble> {
           const SizedBox(height: 8),
           Text(
             widget.message.text,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: widget.isMe
+                  ? Colors.white
+                  : (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF1E293B)),
+            ),
           ),
           if (widget.message.locationAddress != null &&
               widget.message.locationAddress!.isNotEmpty &&
@@ -631,7 +639,15 @@ class _MessageBubbleState extends State<MessageBubble> {
             const SizedBox(height: 4),
             Text(
               widget.message.locationAddress!,
-              style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
+              style: TextStyle(
+                fontSize: 12,
+                color: widget.isMe
+                    ? Colors.white.withValues(alpha: 0.85)
+                    : (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : const Color(0xFF475569)),
+                height: 1.3,
+              ),
             ),
           ],
         ],

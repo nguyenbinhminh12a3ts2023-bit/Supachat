@@ -167,6 +167,8 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     final text = _textController.text.trim();
     final imageBytes = _pendingImageBytes;
 
+    if (imageBytes == null && text.isEmpty) return;
+
     // 1. Gửi ảnh đính kèm nếu có
     if (imageBytes != null) {
       if (widget.onSendImageBytes != null) {

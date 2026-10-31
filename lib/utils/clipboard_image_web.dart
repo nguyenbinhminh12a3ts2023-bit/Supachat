@@ -17,6 +17,7 @@ class ClipboardImageHelper {
           for (int i = 0; i < count; i++) {
             final item = items[i];
             if (item.type != null && item.type!.startsWith('image/')) {
+              event.preventDefault();
               final file = item.getAsFile();
               if (file != null) {
                 final reader = html.FileReader();
