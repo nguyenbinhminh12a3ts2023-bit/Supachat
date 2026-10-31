@@ -8,6 +8,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../services/firestore_helper.dart';
+import '../services/presence_service.dart';
 
 /// Provider quản lý trạng thái xác thực và hồ sơ người dùng
 /// Có hỗ trợ lưu trữ cục bộ SharedPreferences vĩnh viễn (Local Persistence)
@@ -69,12 +70,15 @@ class AuthProvider with ChangeNotifier {
     try {
       _authService.authStateChanges.listen((User? user) async {
         if (user != null) {
+          // Khởi động gửi nhịp tim hiện diện trực tuyến thật
+          PresenceService().start();
           // Tải cache riêng của UID này trước để hiển thị tức thì
           await _loadLocalUserProfile(user.uid);
           // Đồng bộ thông tin mới nhất từ Firestore
           await fetchCurrentUserProfile();
         } else {
-          // Khi đã đăng xuất: Xóa thông tin phiên làm việc
+          // Khi đã đăng xuất: Dừng gửi nhịp tim và đặt ngoại tuyến
+          PresenceService().stop();
           _currentUserModel = null;
           notifyListeners();
         }
@@ -227,6 +231,7 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     try {
       final uid = _currentUserModel?.uid ?? _authService.currentUser?.uid;
+      PresenceService().stop();
       await _authService.signOut();
       _currentUserModel = null;
       try {
@@ -424,12 +429,7 @@ class AuthProvider with ChangeNotifier {
     if (_currentUserModel == null) return;
     _currentUserModel = _currentUserModel!.copyWith(isOnline: isOnline);
     await _saveLocalUserProfile(_currentUserModel!);
-    try {
-      await AppFirestore.instance
-          .collection('users')
-          .doc(_currentUserModel!.uid)
-          .update({'isOnline': isOnline, 'lastActive': FieldValue.serverTimestamp()});
-    } catch (_) {}
+    await PresenceService().setOnline(isOnline);
     notifyListeners();
   }
 

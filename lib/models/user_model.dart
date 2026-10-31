@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Model thông tin người dùng trong ứng dụng SupaChat
 class UserModel {
@@ -38,6 +38,43 @@ class UserModel {
 
   /// Kiểm tra xem người dùng có phải là Quản trị viên (Admin) không
   bool get isAdmin => role == 'admin' || email.toLowerCase().contains('admin');
+
+  /// Tính toán trạng thái trực tuyến thật:
+  /// Người dùng chỉ thực sự online nếu isOnline == true VÀ có tương tác/nhịp tim trong vòng 2 phút qua
+  bool get isActuallyOnline {
+    if (!isOnline) return false;
+    if (lastSeen == null) return true;
+    final diff = DateTime.now().difference(lastSeen!);
+    return diff.inSeconds <= 120;
+  }
+
+  /// Chuỗi hiển thị trạng thái hoạt động chuẩn Messenger / Zalo
+  String get onlineStatusText {
+    if (isActuallyOnline) {
+      return 'Đang hoạt động';
+    }
+    if (lastSeen == null) {
+      return 'Ngoại tuyến';
+    }
+    final now = DateTime.now();
+    final diff = now.difference(lastSeen!);
+
+    if (diff.inMinutes < 1) {
+      return 'Vừa mới truy cập';
+    } else if (diff.inMinutes < 60) {
+      return 'Hoạt động ${diff.inMinutes} phút trước';
+    } else if (diff.inHours < 24 && now.day == lastSeen!.day) {
+      final hour = lastSeen!.hour.toString().padLeft(2, '0');
+      final minute = lastSeen!.minute.toString().padLeft(2, '0');
+      return 'Hoạt động lúc $hour:$minute';
+    } else if (diff.inDays <= 1) {
+      return 'Hoạt động hôm qua';
+    } else {
+      final day = lastSeen!.day.toString().padLeft(2, '0');
+      final month = lastSeen!.month.toString().padLeft(2, '0');
+      return 'Hoạt động ngày $day/$month';
+    }
+  }
 
   /// Chuyển đổi dữ liệu UserModel sang Map để lưu trên Firestore
   Map<String, dynamic> toMap() {
@@ -105,7 +142,7 @@ class UserModel {
       photoUrl: (map['photoUrl'] as String?)?.isNotEmpty == true ? map['photoUrl'] : null,
       bio: (map['bio'] as String?)?.isNotEmpty == true && map['bio'] != 'Xin chào, tôi đang dùng SupaChat.' ? map['bio'] : null,
       isOnline: map['isOnline'] ?? false,
-      lastSeen: map['lastSeen'] != null ? parseDate(map['lastSeen']) : null,
+      lastSeen: (map['lastSeen'] ?? map['lastActive']) != null ? parseDate(map['lastSeen'] ?? map['lastActive']) : null,
       createdAt: map['createdAt'] != null ? parseDate(map['createdAt']) : DateTime.now(),
       friendsList: List<String>.from(map['friendsList'] ?? []),
       isVerified: map['isVerified'] ?? false,

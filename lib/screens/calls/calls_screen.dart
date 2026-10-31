@@ -117,17 +117,17 @@ class _CallsScreenState extends State<CallsScreen> {
                           name: friend.displayName,
                           radius: 22,
                           showOnlineStatus: true,
-                          isOnline: friend.isOnline,
+                          isOnline: friend.isActuallyOnline,
                         ),
                         title: Text(
                           friend.displayName,
                           style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary),
                         ),
                         subtitle: Text(
-                          friend.isOnline ? 'Đang trực tuyến' : '@${friend.email.split('@').first}',
+                          friend.onlineStatusText,
                           style: TextStyle(
                             fontSize: 12,
-                            color: friend.isOnline ? AppColors.accentGreen : textSecondary,
+                            color: friend.isActuallyOnline ? AppColors.accentGreen : textSecondary,
                           ),
                         ),
                         trailing: ElevatedButton.icon(

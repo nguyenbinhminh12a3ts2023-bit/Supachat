@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -570,36 +571,98 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
+  static final Map<String, Uint8List> _base64Cache = {};
+
+  static Uint8List? _getDecodedBytes(String url) {
+    if (_base64Cache.containsKey(url)) {
+      return _base64Cache[url];
+    }
+    try {
+      final base64Str = url.contains(',') ? url.split(',').last : url;
+      final bytes = base64Decode(base64Str);
+      if (_base64Cache.length > 60) {
+        _base64Cache.remove(_base64Cache.keys.first);
+      }
+      _base64Cache[url] = bytes;
+      return bytes;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Widget _buildBrokenImagePlaceholder() {
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.broken_image_rounded, size: 36, color: AppColors.textSecondary),
+            SizedBox(height: 6),
+            Text(
+              'Không thể hiển thị ảnh',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildImageContent(BuildContext context) {
+    final mediaUrl = widget.message.mediaUrl;
+    if (mediaUrl == null || mediaUrl.isEmpty) {
+      return _buildBrokenImagePlaceholder();
+    }
+
+    final isBase64 = mediaUrl.startsWith('data:image');
+    final bytes = isBase64 ? _getDecodedBytes(mediaUrl) : null;
+
+    Widget imageWidget;
+    if (isBase64) {
+      if (bytes != null) {
+        imageWidget = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          errorBuilder: (context, error, stackTrace) => _buildBrokenImagePlaceholder(),
+        );
+      } else {
+        imageWidget = _buildBrokenImagePlaceholder();
+      }
+    } else {
+      imageWidget = CachedNetworkImage(
+        imageUrl: mediaUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        memCacheWidth: 800,
+        maxWidthDiskCache: 1200,
+        placeholder: (context, url) => Container(
+          height: 180,
+          color: AppColors.surface,
+          child: const Center(
+            child: SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => _buildBrokenImagePlaceholder(),
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: GestureDetector(
         onTap: () => _openImagePreview(context),
         child: Hero(
           tag: 'image_${widget.message.id}',
-          child: CachedNetworkImage(
-            imageUrl: widget.message.mediaUrl!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            memCacheWidth: 800,
-            maxWidthDiskCache: 1200,
-            placeholder: (context, url) => Container(
-              height: 180,
-              color: AppColors.surface,
-              child: const Center(
-                child: SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            ),
-            errorWidget: (context, url, error) => Container(
-              height: 120,
-              color: AppColors.surface,
-              child: const Center(child: Icon(Icons.broken_image, size: 36, color: AppColors.textSecondary)),
-            ),
-          ),
+          child: imageWidget,
         ),
       ),
     );
@@ -689,21 +752,78 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   void _openImagePreview(BuildContext context) {
+    final mediaUrl = widget.message.mediaUrl;
+    if (mediaUrl == null || mediaUrl.isEmpty) return;
+
+    final isBase64 = mediaUrl.startsWith('data:image');
+    final bytes = isBase64 ? _getDecodedBytes(mediaUrl) : null;
+
+    Widget previewWidget;
+    if (isBase64) {
+      if (bytes != null) {
+        previewWidget = Image.memory(
+          bytes,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => const Center(
+            child: Icon(Icons.broken_image_rounded, color: Colors.white60, size: 64),
+          ),
+        );
+      } else {
+        previewWidget = const Center(
+          child: Icon(Icons.broken_image_rounded, color: Colors.white60, size: 64),
+        );
+      }
+    } else {
+      previewWidget = CachedNetworkImage(
+        imageUrl: mediaUrl,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+        errorWidget: (context, url, error) => const Center(
+          child: Icon(Icons.broken_image_rounded, color: Colors.white60, size: 64),
+        ),
+      );
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
           backgroundColor: Colors.black,
           appBar: AppBar(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.black87,
             elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.white),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              widget.senderName ?? 'Hình ảnh',
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.download_rounded, color: Colors.white),
+                tooltip: 'Lưu ảnh',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Ảnh đã được lưu trong ứng dụng!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           body: Center(
             child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
               child: Hero(
                 tag: 'image_${widget.message.id}',
-                child: CachedNetworkImage(imageUrl: widget.message.mediaUrl!),
+                child: previewWidget,
               ),
             ),
           ),

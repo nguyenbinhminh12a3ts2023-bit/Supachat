@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../providers/locale_provider.dart';
 import '../story/story_archive_screen.dart';
 import 'package:flutter/material.dart';
@@ -859,12 +860,19 @@ class _FeedScreenState extends State<FeedScreen> {
               padding: const EdgeInsets.only(bottom: 12),
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                child: Image.network(
-                  post.imageUrl!,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                ),
+                child: post.imageUrl!.startsWith('data:image')
+                    ? Image.memory(
+                        base64Decode(post.imageUrl!.split(',').last),
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      )
+                    : Image.network(
+                        post.imageUrl!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
               ),
             ),
 

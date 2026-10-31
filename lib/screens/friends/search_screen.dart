@@ -702,7 +702,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                   name: targetUser.displayName,
                   radius: 24,
                   showOnlineStatus: true,
-                  isOnline: targetUser.isOnline,
+                  isOnline: targetUser.isActuallyOnline,
                 ),
                 const SizedBox(width: 14),
                 Expanded(

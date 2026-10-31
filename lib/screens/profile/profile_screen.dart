@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -657,11 +658,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       child: Container(
                         color: isDark ? AppColors.darkSurface : Colors.grey[200],
                         child: post.imageUrl != null
-                            ? Image.network(
-                                post.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
-                              )
+                            ? (post.imageUrl!.startsWith('data:image')
+                                ? Image.memory(
+                                    base64Decode(post.imageUrl!.split(',').last),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
+                                  )
+                                : Image.network(
+                                    post.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
+                                  ))
                             : Center(
                                 child: Padding(
                                   padding: const EdgeInsets.all(8),
@@ -821,7 +828,19 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.network(post.imageUrl!, height: 300, width: double.infinity, fit: BoxFit.cover),
+                child: post.imageUrl!.startsWith('data:image')
+                    ? Image.memory(
+                        base64Decode(post.imageUrl!.split(',').last),
+                        height: 300,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        post.imageUrl!,
+                        height: 300,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ],
             const SizedBox(height: 12),

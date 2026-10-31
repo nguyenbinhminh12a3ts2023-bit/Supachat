@@ -288,17 +288,8 @@ class _ChatScreenState extends State<ChatScreen> {
           stream: _authService.getUserStream(widget.receiverUser.uid),
           builder: (context, snapshot) {
             final user = snapshot.data ?? widget.receiverUser;
-            final isOnline = user.isOnline;
-
-            final lastSeen = user.lastSeen;
-            String statusText;
-            if (isOnline) {
-              statusText = 'Đang hoạt động';
-            } else if (lastSeen != null) {
-              statusText = 'Hoạt động ${DateFormat('HH:mm').format(lastSeen)}';
-            } else {
-              statusText = 'Ngoại tuyến';
-            }
+            final isOnline = user.isActuallyOnline;
+            final statusText = user.onlineStatusText;
 
             return GestureDetector(
               onTap: () {

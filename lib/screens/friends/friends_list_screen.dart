@@ -288,7 +288,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
         final allFriends = snapshot.data ?? [];
 
         final filtered = allFriends.where((friend) {
-          if (_selectedFilter == 1 && !friend.isOnline) return false;
+          if (_selectedFilter == 1 && !friend.isActuallyOnline) return false;
           if (_searchController.text.isNotEmpty &&
               !friend.displayName.toLowerCase().contains(_searchController.text.toLowerCase()) &&
               !friend.email.toLowerCase().contains(_searchController.text.toLowerCase())) {
@@ -385,7 +385,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 name: friend.displayName,
                 radius: 26,
                 showOnlineStatus: true,
-                isOnline: friend.isOnline,
+                isOnline: friend.isActuallyOnline,
               ),
               title: Text(
                 friend.displayName,
@@ -396,12 +396,13 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 ),
               ),
               subtitle: Text(
-                friend.bio?.isNotEmpty == true
-                    ? friend.bio!
-                    : '@${friend.email.split('@').first}',
+                friend.isActuallyOnline ? 'Đang hoạt động' : friend.onlineStatusText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: textSecondary),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: friend.isActuallyOnline ? AppColors.tealAccent : textSecondary,
+                ),
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,

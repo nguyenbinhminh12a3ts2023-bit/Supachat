@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/chat_room_model.dart';
@@ -57,7 +57,7 @@ class ChatTile extends StatelessWidget {
         final otherUser = snapshot.data;
         final displayName = otherUser?.displayName ?? 'Đang tải...';
         final photoUrl = otherUser?.photoUrl;
-        final isOnline = otherUser?.isOnline ?? false;
+        final isOnline = otherUser?.isActuallyOnline ?? false;
 
         return InkWell(
           onTap: onTap ?? () {

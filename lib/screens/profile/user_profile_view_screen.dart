@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/chat_service.dart';
@@ -45,7 +45,7 @@ class UserProfileViewScreen extends StatelessWidget {
                     name: user.displayName,
                     radius: 52,
                     showOnlineStatus: true,
-                    isOnline: user.isOnline,
+                    isOnline: user.isActuallyOnline,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -62,16 +62,16 @@ class UserProfileViewScreen extends StatelessWidget {
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   ),
                   const SizedBox(height: 8),
-                  // Trạng thái online/offline
+                  // Trạng thái online/offline thật
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color: user.isOnline
+                      color: user.isActuallyOnline
                           ? AppColors.online.withValues(alpha: 0.15)
                           : AppColors.surface,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: user.isOnline ? AppColors.online : AppColors.border,
+                        color: user.isActuallyOnline ? AppColors.online : AppColors.border,
                       ),
                     ),
                     child: Row(
@@ -81,15 +81,15 @@ class UserProfileViewScreen extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: user.isOnline ? AppColors.online : AppColors.offline,
+                            color: user.isActuallyOnline ? AppColors.online : AppColors.offline,
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          user.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến',
+                          user.onlineStatusText,
                           style: TextStyle(
-                            color: user.isOnline ? AppColors.online : AppColors.textMuted,
+                            color: user.isActuallyOnline ? AppColors.online : AppColors.textMuted,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),

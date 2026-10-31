@@ -7,6 +7,7 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/friend_service.dart';
+import '../../services/presence_service.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/global_music_player_bar.dart';
 import '../chat/chat_screen.dart';
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    PresenceService().start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         Provider.of<AuthProvider>(context, listen: false).fetchCurrentUserProfile();
@@ -156,12 +158,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           name: friend.displayName,
                           radius: 22,
                           showOnlineStatus: true,
-                          isOnline: friend.isOnline,
+                          isOnline: friend.isActuallyOnline,
                         ),
                         title: Text(friend.displayName, style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
                         subtitle: Text(
-                          friend.isOnline ? 'Đang hoạt động' : '@${friend.email.split('@').first}',
-                          style: TextStyle(fontSize: 12, color: friend.isOnline ? AppColors.tealAccent : textSecondary),
+                          friend.onlineStatusText,
+                          style: TextStyle(fontSize: 12, color: friend.isActuallyOnline ? AppColors.tealAccent : textSecondary),
                         ),
                         trailing: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primary, size: 20),
                         onTap: () {
