@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../models/user_model.dart';
 import '../services/call_service.dart';
+import '../utils/call_ringtone_helper.dart';
 import '../utils/real_call_audio_helper.dart';
 import 'avatar_widget.dart';
 
@@ -92,11 +93,15 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   void initState() {
     super.initState();
     _listenCallStatus();
+    if (widget.isCaller) {
+      CallRingtoneHelper.startRingbackTone();
+    }
     RealCallAudioHelper.startCallSession(
       callId: widget.callId,
       isCaller: widget.isCaller,
       onConnectedChange: (connected) {
         if (mounted && connected && !_isConnected) {
+          CallRingtoneHelper.stopAll();
           setState(() {
             _isConnected = true;
             _statusText = 'Đang đàm thoại';
@@ -115,12 +120,14 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
       final status = data['status'] as String? ?? '';
 
       if (status == 'accepted' && !_isConnected) {
+        CallRingtoneHelper.stopAll();
         setState(() {
           _isConnected = true;
           _statusText = 'Đang đàm thoại';
         });
         _startTimer();
       } else if (status == 'declined') {
+        CallRingtoneHelper.stopAll();
         setState(() {
           _statusText = 'Cuộc gọi bị từ chối';
         });
@@ -129,6 +136,7 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
           if (mounted) Navigator.pop(context);
         });
       } else if (status == 'ended') {
+        CallRingtoneHelper.stopAll();
         RealCallAudioHelper.endCallSession();
         if (mounted) Navigator.pop(context);
       }
@@ -155,6 +163,7 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   void _endCall() async {
     _timer?.cancel();
     _callSub?.cancel();
+    CallRingtoneHelper.stopAll();
     RealCallAudioHelper.endCallSession();
     await _callService.endCall(
       callId: widget.callId,
@@ -168,6 +177,7 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   void dispose() {
     _timer?.cancel();
     _callSub?.cancel();
+    CallRingtoneHelper.stopAll();
     RealCallAudioHelper.endCallSession();
     super.dispose();
   }

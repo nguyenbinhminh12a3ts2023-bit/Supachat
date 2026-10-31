@@ -326,7 +326,14 @@ class ChatService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => MessageModel.fromDocument(doc)).toList();
+      final uid = currentUserId;
+      return snapshot.docs
+          .map((doc) => MessageModel.fromDocument(doc))
+          .where((msg) {
+            if (uid != null && msg.hiddenFor.contains(uid)) return false;
+            return true;
+          })
+          .toList();
     });
   }
 
@@ -380,8 +387,8 @@ class ChatService {
     }
   }
 
-  /// Xóa tin nhắn chỉ phía người dùng hiện tại (đánh dấu deletedFor)
-  Future<void> deleteMessageForMe(String roomId, String messageId) async {
+  /// Ẩn tin nhắn ở phía người dùng hiện tại
+  Future<void> hideMessage(String roomId, String messageId) async {
     final uid = currentUserId;
     if (uid == null) return;
 
@@ -392,11 +399,45 @@ class ChatService {
           .collection('messages')
           .doc(messageId)
           .update({
+        'hiddenFor': FieldValue.arrayUnion([uid]),
         'deletedFor': FieldValue.arrayUnion([uid]),
       });
-    } catch (e) {
-      // bỏ qua lỗi nhỏ
-    }
+    } catch (_) {}
+  }
+
+  /// Ghim hoặc bỏ ghim tin nhắn
+  Future<void> togglePinMessage(String roomId, String messageId, bool isPinned) async {
+    try {
+      await _firestore
+          .collection('chat_rooms')
+          .doc(roomId)
+          .collection('messages')
+          .doc(messageId)
+          .update({
+        'isPinned': isPinned,
+      });
+
+      await _firestore.collection('chat_rooms').doc(roomId).set({
+        'pinnedMessageId': isPinned ? messageId : null,
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
+  /// Xóa vĩnh viễn tin nhắn khỏi Firestore
+  Future<void> deleteMessagePermanently(String roomId, String messageId) async {
+    try {
+      await _firestore
+          .collection('chat_rooms')
+          .doc(roomId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+    } catch (_) {}
+  }
+
+  /// Xóa tin nhắn chỉ phía người dùng hiện tại (đánh dấu deletedFor / hiddenFor)
+  Future<void> deleteMessageForMe(String roomId, String messageId) async {
+    await hideMessage(roomId, messageId);
   }
 
   /// Thu hồi tin nhắn với cả hai bên (cập nhật text thành __UNSENT__)
@@ -412,10 +453,9 @@ class ChatService {
         'content': '__UNSENT__',
         'mediaUrl': '',
         'type': 'text',
+        'isDeleted': true,
       });
-    } catch (e) {
-      // bỏ qua lỗi nhỏ
-    }
+    } catch (_) {}
   }
 
   /// Stream danh sách tất cả người dùng khác trong hệ thống để tìm kiếm / kết bạn

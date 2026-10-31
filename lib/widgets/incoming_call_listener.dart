@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 import '../services/call_service.dart';
+import '../utils/call_ringtone_helper.dart';
 import 'avatar_widget.dart';
 import 'real_audio_call_screen.dart';
 
@@ -20,6 +21,12 @@ class IncomingCallListener extends StatefulWidget {
 class _IncomingCallListenerState extends State<IncomingCallListener> {
   String? _activeShowingCallId;
   BuildContext? _dialogContext;
+
+  @override
+  void dispose() {
+    CallRingtoneHelper.stopAll();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,12 +50,14 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
 
           if (_activeShowingCallId != callId) {
             _activeShowingCallId = callId;
+            CallRingtoneHelper.startIncomingRingtone();
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _showIncomingDialog(context, callId, callerId, callerName, callerAvatar);
             });
           }
         } else {
           // Khi người gọi đã tắt cuộc gọi trước khi người nhận nhấc máy
+          CallRingtoneHelper.stopAll();
           if (_activeShowingCallId != null && _dialogContext != null && _dialogContext!.mounted) {
             Navigator.of(_dialogContext!).pop();
           }
@@ -120,6 +129,7 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
                       children: [
                         GestureDetector(
                           onTap: () {
+                            CallRingtoneHelper.stopAll();
                             CallService().declineCall(callId, callerId: callerId);
                             if (ctx.mounted) Navigator.pop(ctx);
                           },
@@ -142,6 +152,7 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
                       children: [
                         GestureDetector(
                           onTap: () async {
+                            CallRingtoneHelper.stopAll();
                             await CallService().acceptCall(callId);
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (context.mounted) {

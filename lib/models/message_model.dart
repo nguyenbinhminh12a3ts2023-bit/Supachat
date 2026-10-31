@@ -29,6 +29,9 @@ class MessageModel {
   final double? longitude;
   final String? locationAddress;
   final String? postId;
+  final bool isPinned;
+  final bool isDeleted;
+  final List<String> hiddenFor;
 
   MessageModel({
     required this.id,
@@ -45,7 +48,50 @@ class MessageModel {
     this.longitude,
     this.locationAddress,
     this.postId,
+    this.isPinned = false,
+    this.isDeleted = false,
+    this.hiddenFor = const [],
   });
+
+  MessageModel copyWith({
+    String? id,
+    String? senderId,
+    String? receiverId,
+    String? text,
+    MessageType? type,
+    String? mediaUrl,
+    String? fileName,
+    String? fileSize,
+    DateTime? timestamp,
+    bool? isSeen,
+    double? latitude,
+    double? longitude,
+    String? locationAddress,
+    String? postId,
+    bool? isPinned,
+    bool? isDeleted,
+    List<String>? hiddenFor,
+  }) {
+    return MessageModel(
+      id: id ?? this.id,
+      senderId: senderId ?? this.senderId,
+      receiverId: receiverId ?? this.receiverId,
+      text: text ?? this.text,
+      type: type ?? this.type,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      fileName: fileName ?? this.fileName,
+      fileSize: fileSize ?? this.fileSize,
+      timestamp: timestamp ?? this.timestamp,
+      isSeen: isSeen ?? this.isSeen,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      locationAddress: locationAddress ?? this.locationAddress,
+      postId: postId ?? this.postId,
+      isPinned: isPinned ?? this.isPinned,
+      isDeleted: isDeleted ?? this.isDeleted,
+      hiddenFor: hiddenFor ?? this.hiddenFor,
+    );
+  }
 
   /// Getter alias tương thích với giao diện cũ
   String get content => text;
@@ -114,6 +160,9 @@ class MessageModel {
       if (longitude != null) 'longitude': longitude,
       if (locationAddress != null) 'locationAddress': locationAddress,
       if (postId != null) 'postId': postId,
+      if (isPinned) 'isPinned': true,
+      if (isDeleted) 'isDeleted': true,
+      if (hiddenFor.isNotEmpty) 'hiddenFor': hiddenFor,
     };
   }
 
@@ -134,6 +183,12 @@ class MessageModel {
       return DateTime.now();
     }
 
+    final hiddenList = (map['hiddenFor'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+        (map['deletedFor'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+        [];
+    final isDeletedVal = map['isDeleted'] == true || map['text'] == '__UNSENT__' || map['content'] == '__UNSENT__';
+    final isPinnedVal = map['isPinned'] == true;
+
     return MessageModel(
       id: id ?? map['id'] ?? '',
       senderId: map['senderId'] ?? '',
@@ -149,6 +204,9 @@ class MessageModel {
       longitude: (map['longitude'] as num?)?.toDouble(),
       locationAddress: map['locationAddress'] as String?,
       postId: map['postId'] as String?,
+      isPinned: isPinnedVal,
+      isDeleted: isDeletedVal,
+      hiddenFor: hiddenList,
     );
   }
 }

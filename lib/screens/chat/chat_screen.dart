@@ -185,24 +185,101 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _handleDeleteMessage(MessageModel message) {
+  void _handleTogglePin(MessageModel message) {
+    final newStatus = !message.isPinned;
+    _chatService.togglePinMessage(_roomId, message.id, newStatus);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(newStatus ? '📌 Đã ghim tin nhắn' : 'Đã bỏ ghim tin nhắn'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handleHideMessage(MessageModel message) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Xóa tin nhắn'),
-        content: const Text('Xóa tin nhắn này khỏi thiết bị của bạn?'),
+        title: const Row(
+          children: [
+            Icon(Icons.visibility_off_outlined, color: AppColors.primary, size: 22),
+            SizedBox(width: 8),
+            Text('Ẩn tin nhắn'),
+          ],
+        ),
+        content: const Text('Tin nhắn này sẽ bị ẩn khỏi cuộc trò chuyện ở phía bạn. Bạn có chắc không?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Hủy'),
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _chatService.hideMessage(_roomId, message.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã ẩn tin nhắn'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Ẩn tin nhắn'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleDeleteMessage(MessageModel message) {
+    final isMe = message.senderId == _currentUserId;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 22),
+            SizedBox(width: 8),
+            Text('Xóa tin nhắn'),
+          ],
+        ),
+        content: Text(isMe
+            ? 'Bạn muốn xóa tin nhắn này như thế nào?'
+            : 'Xóa tin nhắn này khỏi màn hình trò chuyện của bạn?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          if (isMe && !message.isDeleted)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _chatService.unsendMessage(_roomId, message.id);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã thu hồi tin nhắn'), behavior: SnackBarBehavior.floating),
+                );
+              },
+              child: const Text('Thu hồi với mọi người', style: TextStyle(color: AppColors.primary)),
+            ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _chatService.deleteMessageForMe(_roomId, message.id);
+              _chatService.hideMessage(_roomId, message.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã xóa tin nhắn ở phía bạn'), behavior: SnackBarBehavior.floating),
+              );
             },
-            child: const Text('Xóa', style: TextStyle(color: AppColors.error)),
+            child: const Text('Xóa ở phía tôi', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -225,6 +302,9 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               _chatService.unsendMessage(_roomId, message.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Đã thu hồi tin nhắn'), behavior: SnackBarBehavior.floating),
+              );
             },
             child: const Text('Thu hồi', style: TextStyle(color: AppColors.error)),
           ),
@@ -443,45 +523,126 @@ class _ChatScreenState extends State<ChatScreen> {
                       );
                     }
 
-                    return ListView.builder(
-                      reverse: true,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        final isMe = message.senderId == _currentUserId;
+                    // Tìm tin nhắn đang được ghim trong phòng chat
+                    MessageModel? pinnedMessage;
+                    for (final m in messages) {
+                      if (m.isPinned) {
+                        pinnedMessage = m;
+                        break;
+                      }
+                    }
 
-                        // Tính toán hiển thị Ngày phân cách (Ngày đổi)
-                        // Trong ListView reverse: true, tin nhắn cũ hơn nằm ở index + 1
-                        bool isDifferentDay = false;
-                        if (index == messages.length - 1) {
-                          isDifferentDay = true;
-                        } else {
-                          final olderMessage = messages[index + 1];
-                          isDifferentDay = message.timestamp.year != olderMessage.timestamp.year ||
-                              message.timestamp.month != olderMessage.timestamp.month ||
-                              message.timestamp.day != olderMessage.timestamp.day;
-                        }
-
-                        // Hiển thị avatar đối phương ở tin nhắn dưới cùng trong chuỗi gửi liên tiếp
-                        final bool isLastInGroup = index == 0 || messages[index - 1].senderId != message.senderId;
-
-                        return Column(
-                          children: [
-                            if (isDifferentDay) _buildDateHeader(message.timestamp, isDark),
-                            MessageBubble(
-                              key: ValueKey(message.id),
-                              message: message,
-                              isMe: isMe,
-                              senderAvatar: widget.receiverUser.photoUrl,
-                              senderName: widget.receiverUser.displayName,
-                              showAvatar: isLastInGroup,
-                              onDelete: () => _handleDeleteMessage(message),
-                              onUnsend: isMe ? () => _handleUnsendMessage(message) : null,
+                    return Column(
+                      children: [
+                        // Thanh hiển thị tin nhắn đã ghim
+                        if (pinnedMessage != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E2235) : const Color(0xFFF1F5F9),
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                                  width: 0.8,
+                                ),
+                              ),
                             ),
-                          ],
-                        );
-                      },
+                            child: Row(
+                              children: [
+                                const Icon(Icons.push_pin_rounded, color: Colors.amber, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Tin nhắn đã ghim',
+                                        style: TextStyle(
+                                          color: Colors.amber,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      Text(
+                                        pinnedMessage.isDeleted
+                                            ? 'Tin nhắn đã bị thu hồi'
+                                            : pinnedMessage.text.isNotEmpty
+                                                ? pinnedMessage.text
+                                                : (pinnedMessage.type == MessageType.image ? '[Hình ảnh]' : '[Đính kèm]'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : AppColors.textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 18),
+                                  tooltip: 'Bỏ ghim',
+                                  onPressed: () {
+                                    _chatService.togglePinMessage(_roomId, pinnedMessage!.id, false);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Đã bỏ ghim tin nhắn'),
+                                        duration: Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        Expanded(
+                          child: ListView.builder(
+                            reverse: true,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            itemCount: messages.length,
+                            itemBuilder: (context, index) {
+                              final message = messages[index];
+                              final isMe = message.senderId == _currentUserId;
+
+                              // Tính toán hiển thị Ngày phân cách (Ngày đổi)
+                              bool isDifferentDay = false;
+                              if (index == messages.length - 1) {
+                                isDifferentDay = true;
+                              } else {
+                                final olderMessage = messages[index + 1];
+                                isDifferentDay = message.timestamp.year != olderMessage.timestamp.year ||
+                                    message.timestamp.month != olderMessage.timestamp.month ||
+                                    message.timestamp.day != olderMessage.timestamp.day;
+                              }
+
+                              // Hiển thị avatar đối phương ở tin nhắn dưới cùng trong chuỗi gửi liên tiếp
+                              final bool isLastInGroup = index == 0 || messages[index - 1].senderId != message.senderId;
+
+                              return Column(
+                                children: [
+                                  if (isDifferentDay) _buildDateHeader(message.timestamp, isDark),
+                                  MessageBubble(
+                                    key: ValueKey(message.id),
+                                    message: message,
+                                    isMe: isMe,
+                                    senderAvatar: widget.receiverUser.photoUrl,
+                                    senderName: widget.receiverUser.displayName,
+                                    showAvatar: isLastInGroup,
+                                    onPin: () => _handleTogglePin(message),
+                                    onHide: () => _handleHideMessage(message),
+                                    onDelete: () => _handleDeleteMessage(message),
+                                    onUnsend: isMe ? () => _handleUnsendMessage(message) : null,
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),

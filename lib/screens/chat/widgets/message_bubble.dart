@@ -17,6 +17,8 @@ import '../../../widgets/post_detail_modal.dart';
 class MessageBubble extends StatefulWidget {
   final MessageModel message;
   final bool isMe;
+  final VoidCallback? onPin;
+  final VoidCallback? onHide;
   final VoidCallback? onDelete;
   final VoidCallback? onUnsend;
   final String? senderAvatar;
@@ -27,6 +29,8 @@ class MessageBubble extends StatefulWidget {
     super.key,
     required this.message,
     required this.isMe,
+    this.onPin,
+    this.onHide,
     this.onDelete,
     this.onUnsend,
     this.senderAvatar,
@@ -98,7 +102,36 @@ class _MessageBubbleState extends State<MessageBubble> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : Colors.white,
       items: [
-        if (message.type == MessageType.text || message.type == MessageType.location)
+        if (widget.onPin != null)
+          PopupMenuItem(
+            onTap: widget.onPin,
+            child: Row(
+              children: [
+                Icon(
+                  message.isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                  size: 20,
+                  color: Colors.amber,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  message.isPinned ? 'Bỏ ghim tin nhắn' : 'Ghim tin nhắn',
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        if (widget.onHide != null)
+          PopupMenuItem(
+            onTap: widget.onHide,
+            child: const Row(
+              children: [
+                Icon(Icons.visibility_off_outlined, size: 20, color: AppColors.textSecondary),
+                SizedBox(width: 10),
+                Text('Ẩn tin nhắn', style: TextStyle(color: AppColors.textPrimary)),
+              ],
+            ),
+          ),
+        if ((message.type == MessageType.text || message.type == MessageType.location) && !message.isDeleted)
           PopupMenuItem(
             onTap: () {
               Clipboard.setData(ClipboardData(text: message.text));
@@ -118,7 +151,7 @@ class _MessageBubbleState extends State<MessageBubble> {
               ],
             ),
           ),
-        if (message.type == MessageType.image && message.mediaUrl != null)
+        if (message.type == MessageType.image && message.mediaUrl != null && !message.isDeleted)
           PopupMenuItem(
             onTap: () async {
               await DownloadHelper.downloadImage(message.mediaUrl!);
@@ -139,7 +172,7 @@ class _MessageBubbleState extends State<MessageBubble> {
               ],
             ),
           ),
-        if (message.type == MessageType.text)
+        if (message.type == MessageType.text && !message.isDeleted)
           PopupMenuItem(
             onTap: _translateMessage,
             child: Row(
@@ -153,7 +186,7 @@ class _MessageBubbleState extends State<MessageBubble> {
               ],
             ),
           ),
-        if (isMe)
+        if (isMe && !message.isDeleted)
           PopupMenuItem(
             onTap: widget.onUnsend,
             child: const Row(
@@ -170,7 +203,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             children: [
               Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.error),
               SizedBox(width: 10),
-              Text('Xóa', style: TextStyle(color: AppColors.error)),
+              Text('Xóa tin nhắn', style: TextStyle(color: AppColors.error)),
             ],
           ),
         ),
@@ -390,8 +423,45 @@ class _MessageBubbleState extends State<MessageBubble> {
                   child: Column(
                     crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
+                      // Huy hiệu tin nhắn đã ghim
+                      if (message.isPinned)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.push_pin_rounded, size: 12, color: Colors.amber),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Đã ghim',
+                                style: TextStyle(
+                                  color: Colors.amber.shade300,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // Nội dung
-                      if (message.type == MessageType.image && message.mediaUrl != null)
+                      if (message.isDeleted)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.block_rounded, size: 14, color: isMe ? Colors.white70 : Colors.grey),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Tin nhắn đã bị thu hồi',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: isMe ? Colors.white70 : Colors.grey,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        )
+                      else if (message.type == MessageType.image && message.mediaUrl != null)
                         _buildImageContent(context)
                       else if (message.type == MessageType.voice)
                         _buildVoiceContent(context, isDark)
