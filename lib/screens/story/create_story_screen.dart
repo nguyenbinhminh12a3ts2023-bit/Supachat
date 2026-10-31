@@ -9,6 +9,7 @@ import '../../services/audio_player_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/story_service.dart';
 import '../../widgets/avatar_widget.dart';
+import 'story_archive_screen.dart';
 
 enum StoryCreationMode { select, text, photo }
 
@@ -617,6 +618,142 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     );
   }
 
+  void _showStorySettingsModal() async {
+    final authProv = Provider.of<AuthProvider>(context, listen: false);
+    final uid = authProv.currentUserModel?.uid ?? '';
+    int todayCount = 0;
+    if (uid.isNotEmpty) {
+      todayCount = await _storyService.getTodayStoriesCount(uid);
+    }
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF242526),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.settings_rounded, color: AppColors.primaryLight, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Cài đặt tin (Story)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            // 1. Kho lưu trữ tin
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_stories_rounded, color: AppColors.primaryLight, size: 22),
+              ),
+              title: const Text('Kho lưu trữ tin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+              subtitle: const Text('Xem lại toàn bộ tin 24h bạn đã từng chia sẻ', style: TextStyle(color: Colors.white60, fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StoryArchiveScreen()),
+                );
+              },
+            ),
+            const Divider(color: Colors.white12, height: 16),
+
+            // 2. Quyền riêng tư tin
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.public_rounded, color: AppColors.tealAccent, size: 22),
+              ),
+              title: const Text('Quyền riêng tư tin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+              subtitle: const Text('Công khai • Mọi bạn bè đều có thể xem tin', style: TextStyle(color: Colors.white60, fontSize: 12)),
+              trailing: const Icon(Icons.check_circle_rounded, color: AppColors.tealAccent, size: 20),
+              onTap: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tin của bạn đang ở chế độ Công khai với bạn bè'),
+                    backgroundColor: AppColors.accentGreen,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            const Divider(color: Colors.white12, height: 16),
+
+            // 3. Giới hạn số tin hôm nay
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.hourglass_bottom_rounded, color: Color(0xFFFF9F43), size: 22),
+              ),
+              title: const Text('Giới hạn tin hôm nay', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+              subtitle: Text('Đã đăng $todayCount/5 tin trong vòng 24 giờ qua', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9F43).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text('$todayCount/5', style: const TextStyle(color: Color(0xFFFF9F43), fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ==========================================
   // BƯỚC 1: MÀN HÌNH CHỌN LOẠI TIN (LANDING)
   // ==========================================
@@ -658,13 +795,14 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
               ),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF3A3B3C),
-                  shape: BoxShape.circle,
+              IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF3A3B3C),
+                  shape: const CircleBorder(),
                 ),
-                child: const Icon(Icons.settings_rounded, color: Colors.white70, size: 20),
+                icon: const Icon(Icons.settings_rounded, color: Colors.white70, size: 20),
+                tooltip: 'Cài đặt tin',
+                onPressed: _showStorySettingsModal,
               ),
             ],
           ),

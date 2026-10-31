@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/music_tracks.dart';
 import '../../models/post_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/audio_player_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
 import '../../widgets/avatar_crop_dialog.dart';
@@ -683,28 +685,89 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               },
             ),
 
-            // Tab 2: Âm nhạc / Lượt thích
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.music_note_rounded, size: 56, color: textSecondary.withValues(alpha: 0.5)),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Bộ sưu tập âm nhạc',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textPrimary),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '20 bài hát V-Pop đã sẵn sàng để bạn đính kèm vào các bài viết và tin 24h.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13, color: textSecondary),
-                    ),
-                  ],
-                ),
-              ),
+            // Tab 2: Âm nhạc & Bài hát
+            ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              itemCount: MusicTrackLibrary.tracks.length,
+              itemBuilder: (context, index) {
+                final track = MusicTrackLibrary.tracks[index];
+                final isPlaying = AudioPlayerService.instance.isPlaying &&
+                    AudioPlayerService.instance.currentTrack?.id == track.id;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: borderColor, width: 0.8),
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          track.coverUrl,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 44,
+                            height: 44,
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            child: const Icon(Icons.music_note_rounded, color: AppColors.primaryLight),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              track.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: isPlaying ? AppColors.tealAccent : textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              track.artist,
+                              style: TextStyle(fontSize: 12, color: textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        track.duration,
+                        style: TextStyle(fontSize: 12, color: textSecondary),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(
+                          isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
+                          color: isPlaying ? AppColors.tealAccent : AppColors.primary,
+                          size: 32,
+                        ),
+                        onPressed: () {
+                          if (isPlaying) {
+                            AudioPlayerService.instance.pauseTrack();
+                          } else {
+                            AudioPlayerService.instance.playTrack(track);
+                          }
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
