@@ -40,6 +40,22 @@ class StoryService {
     }
   }
 
+  /// Lấy danh sách tin đang còn hiệu lực
+  Future<List<StoryModel>> getActiveStories() async {
+    final now = DateTime.now();
+    try {
+      final snap = await _firestore.collection('stories').get().timeout(const Duration(seconds: 4));
+      final list = snap.docs
+          .map((doc) => StoryModel.fromFirestore(doc))
+          .where((s) => s.expiresAt.isAfter(now))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    } catch (_) {
+      return cachedStories.where((s) => s.expiresAt.isAfter(now)).toList();
+    }
+  }
+
   /// Luồng lấy toàn bộ tin còn hạn (chưa hết 24h)
   Stream<List<StoryModel>> getActiveStoriesStream() async* {
     final now = DateTime.now();

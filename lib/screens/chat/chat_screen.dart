@@ -9,10 +9,12 @@ import '../../models/message_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../services/audio_player_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/typing_service.dart';
+import '../../utils/voice_recorder_helper.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/real_audio_call_screen.dart';
 import '../profile/user_profile_view_screen.dart';
@@ -83,6 +85,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    VoiceRecorderHelper.stopAudio();
+    AudioPlayerService.instance.stopTrack();
     _messagesSubscription?.cancel();
     _typingService.setTyping(roomId: _roomId, isTyping: false);
     super.dispose();

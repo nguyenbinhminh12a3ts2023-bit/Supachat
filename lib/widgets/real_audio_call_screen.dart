@@ -1,10 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../models/user_model.dart';
 import '../services/call_service.dart';
+import '../utils/real_call_audio_helper.dart';
 import 'avatar_widget.dart';
 
 /// Màn hình Cuộc gọi thoại THẬT 2 chiều (Real Audio Call Screen)
@@ -91,6 +92,19 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   void initState() {
     super.initState();
     _listenCallStatus();
+    RealCallAudioHelper.startCallSession(
+      callId: widget.callId,
+      isCaller: widget.isCaller,
+      onConnectedChange: (connected) {
+        if (mounted && connected && !_isConnected) {
+          setState(() {
+            _isConnected = true;
+            _statusText = 'Đang đàm thoại';
+          });
+          _startTimer();
+        }
+      },
+    );
   }
 
   void _listenCallStatus() {
@@ -103,23 +117,26 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
       if (status == 'accepted' && !_isConnected) {
         setState(() {
           _isConnected = true;
-          _statusText = 'Đang kết nối thoại';
+          _statusText = 'Đang đàm thoại';
         });
         _startTimer();
       } else if (status == 'declined') {
         setState(() {
           _statusText = 'Cuộc gọi bị từ chối';
         });
+        RealCallAudioHelper.endCallSession();
         Future.delayed(const Duration(milliseconds: 1500), () {
           if (mounted) Navigator.pop(context);
         });
       } else if (status == 'ended') {
+        RealCallAudioHelper.endCallSession();
         if (mounted) Navigator.pop(context);
       }
     });
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() {
@@ -138,6 +155,7 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   void _endCall() async {
     _timer?.cancel();
     _callSub?.cancel();
+    RealCallAudioHelper.endCallSession();
     await _callService.endCall(
       callId: widget.callId,
       receiverId: widget.otherUserId,
@@ -150,6 +168,7 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   void dispose() {
     _timer?.cancel();
     _callSub?.cancel();
+    RealCallAudioHelper.endCallSession();
     super.dispose();
   }
 
@@ -278,15 +297,7 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Âm thanh độ phân giải cao',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white38,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
+
               ],
             ),
 
@@ -315,7 +326,11 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
                       icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                       label: 'Tắt tiếng',
                       isActive: _isMuted,
-                      onTap: () => setState(() => _isMuted = !_isMuted),
+                      onTap: () {
+                        final next = !_isMuted;
+                        setState(() => _isMuted = next);
+                        RealCallAudioHelper.setMute(next);
+                      },
                     ),
                     // 2. Loa ngoài
                     _buildControl(

@@ -247,6 +247,27 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Xóa tài khoản vĩnh viễn
+  Future<void> deleteAccount() async {
+    _setLoading(true);
+    try {
+      final uid = _currentUserModel?.uid ?? _authService.currentUser?.uid;
+      PresenceService().stop();
+      await _authService.deleteAccount();
+      _currentUserModel = null;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_cachedUserKey);
+        if (uid != null) {
+          await prefs.remove('_');
+        }
+      } catch (_) {}
+      notifyListeners();
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Cập nhật ảnh đại diện lên Firebase Storage dạng Bytes và Firestore
   Future<bool> updateAvatarBytes(Uint8List bytes) async {
     _setLoading(true);

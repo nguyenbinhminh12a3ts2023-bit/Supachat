@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
@@ -590,6 +590,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showDeleteAccountDialog(BuildContext context, AuthProvider authProvider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.coralDanger, size: 28),
+            const SizedBox(width: 8),
+            Text(
+              'Xóa tài khoản',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản SupaChat không? Toàn bộ dữ liệu của bạn sẽ bị xóa và không thể khôi phục.',
+          style: TextStyle(
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Hủy',
+              style: TextStyle(
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.coralDanger,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await authProvider.deleteAccount();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Xóa vĩnh viễn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -834,6 +892,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: Icon(Icons.chevron_right_rounded, color: textSecondary, size: 20),
                       isDark: isDark,
                       onTap: () => _showChangePasswordDialog(context),
+                    ),
+                    Divider(height: 1, thickness: 0.8, color: borderColor, indent: 56),
+                    // Xóa tài khoản vĩnh viễn
+                    _buildSettingsTile(
+                      icon: Icons.delete_forever_rounded,
+                      title: localeProvider.t('Xóa tài khoản', 'Delete Account'),
+                      subtitle: localeProvider.t('Xóa vĩnh viễn tài khoản và toàn bộ dữ liệu', 'Permanently delete account and data'),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.coralDanger, size: 20),
+                      isDark: isDark,
+                      onTap: () => _showDeleteAccountDialog(context, authProvider),
                     ),
                   ],
                 ),

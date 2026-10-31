@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../models/friend_request_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/friend_service.dart';
+import '../../services/story_service.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/real_audio_call_screen.dart';
 import '../chat/chat_screen.dart';
+import '../story/story_viewer_screen.dart';
 import 'search_screen.dart';
 
 /// Màn hình Bạn bè chuẩn Figma (Screen 16: Bạn bè)
@@ -380,12 +383,45 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
             return ListTile(
               key: ValueKey(friend.uid),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              leading: AvatarWidget(
-                photoUrl: friend.photoUrl,
-                name: friend.displayName,
-                radius: 26,
-                showOnlineStatus: true,
-                isOnline: friend.isActuallyOnline,
+              leading: GestureDetector(
+                onTap: () async {
+                  final storyService = StoryService();
+                  final allStories = await storyService.getActiveStories();
+                  final friendStories = allStories
+                      .where((s) =>
+                          s.userId == friend.uid ||
+                          s.userName.trim().toLowerCase() == friend.displayName.trim().toLowerCase())
+                      .toList();
+                  if (context.mounted) {
+                    if (friendStories.isNotEmpty) {
+                      final authProv = Provider.of<AuthProvider>(context, listen: false);
+                      final myUid = authProv.currentUserModel?.uid ?? '';
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StoryViewerScreen(
+                            stories: friendStories,
+                            currentUserId: myUid,
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(receiverUser: friend),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: AvatarWidget(
+                  photoUrl: friend.photoUrl,
+                  name: friend.displayName,
+                  radius: 26,
+                  showOnlineStatus: true,
+                  isOnline: friend.isActuallyOnline,
+                ),
               ),
               title: Text(
                 friend.displayName,

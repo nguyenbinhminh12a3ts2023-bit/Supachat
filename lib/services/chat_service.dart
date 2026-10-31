@@ -97,6 +97,18 @@ class ChatService {
         senderId: 0,
       },
     }, SetOptions(merge: true));
+
+    try {
+      final senderName = _auth.currentUser?.displayName ?? 'Một người bạn';
+      await _firestore.collection('users').doc(receiverId).collection('notifications').add({
+        'type': 'new_message',
+        'title': senderName,
+        'body': summaryText,
+        'senderId': senderId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    } catch (_) {}
   }
 
   /// Gửi tin nhắn vị trí

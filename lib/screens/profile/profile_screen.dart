@@ -5,11 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
-import '../../constants/music_tracks.dart';
 import '../../models/post_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/audio_player_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
 import '../../widgets/avatar_crop_dialog.dart';
@@ -573,7 +571,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         children: [
                           Icon(Icons.photo_library_outlined, size: 16),
                           SizedBox(width: 6),
-                          Text('Phương tiện ảnh & nhạc', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          Text('Phương tiện ảnh & video', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -692,87 +690,104 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               },
             ),
 
-            // Tab 2: Âm nhạc & Bài hát
-            ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: MusicTrackLibrary.tracks.length,
-              itemBuilder: (context, index) {
-                final track = MusicTrackLibrary.tracks[index];
-                final isPlaying = AudioPlayerService.instance.isPlaying &&
-                    AudioPlayerService.instance.currentTrack?.id == track.id;
+            // Tab 2: Phương tiện ảnh & video của người dùng
+            StreamBuilder<List<PostModel>>(
+              stream: _postService.getPostsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderColor, width: 0.8),
-                  ),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          track.coverUrl,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            width: 44,
-                            height: 44,
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            child: const Icon(Icons.music_note_rounded, color: AppColors.primaryLight),
+                final allPosts = snapshot.data ?? [];
+                final myMediaPosts = allPosts
+                    .where((p) => p.authorId == user?.uid && p.imageUrl != null && p.imageUrl!.isNotEmpty)
+                    .toList();
+
+                if (myMediaPosts.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.video_library_outlined, size: 64, color: textSecondary.withValues(alpha: 0.5)),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Chưa có ảnh hoặc video nào',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Khi bạn đăng tải hình ảnh hoặc video trong bài viết, chúng sẽ xuất hiện đầy đủ ở đây.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: textSecondary),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                  );
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: myMediaPosts.length,
+                  itemBuilder: (context, index) {
+                    final post = myMediaPosts[index];
+                    return GestureDetector(
+                      onTap: () => _showPostDetailModal(
+                        context,
+                        post,
+                        isDark,
+                        cardBg,
+                        textPrimary,
+                        textSecondary,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          fit: StackFit.expand,
                           children: [
-                            Text(
-                              track.title,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: isPlaying ? AppColors.tealAccent : textPrimary,
+                            Image.network(
+                              post.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: AppColors.primary.withValues(alpha: 0.15),
+                                child: const Icon(Icons.broken_image_rounded),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              track.artist,
-                              style: TextStyle(fontSize: 12, color: textSecondary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Positioned(
+                              bottom: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.favorite_rounded, color: Colors.redAccent, size: 10),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      '${post.likes.length}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      Text(
-                        track.duration,
-                        style: TextStyle(fontSize: 12, color: textSecondary),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: Icon(
-                          isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
-                          color: isPlaying ? AppColors.tealAccent : AppColors.primary,
-                          size: 32,
-                        ),
-                        onPressed: () {
-                          if (isPlaying) {
-                            AudioPlayerService.instance.pauseTrack();
-                          } else {
-                            AudioPlayerService.instance.playTrack(track);
-                          }
-                          setState(() {});
-                        },
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),

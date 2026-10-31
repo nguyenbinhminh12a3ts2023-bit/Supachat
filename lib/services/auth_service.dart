@@ -332,6 +332,26 @@ class AuthService {
     }
   }
 
+  /// Xóa tài khoản vĩnh viễn
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final uid = user.uid;
+
+    try {
+      await _firestore.collection('users').doc(uid).delete().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Lưu ý khi xóa dữ liệu user trên Firestore: $e');
+    }
+
+    try {
+      await user.delete();
+    } catch (e) {
+      debugPrint('Lưu ý khi xóa tài khoản Auth: $e');
+      await _auth.signOut();
+    }
+  }
+
   /// Đăng xuất tài khoản
   Future<void> signOut() async {
     try {

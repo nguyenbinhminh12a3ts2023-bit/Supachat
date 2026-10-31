@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/locale_provider.dart';
 import '../story/story_archive_screen.dart';
 import 'package:flutter/material.dart';
@@ -10,10 +11,15 @@ import '../../models/post_model.dart';
 import '../../models/story_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audio_player_service.dart';
+import '../../services/chat_service.dart';
+import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
 import '../../services/story_service.dart';
 import '../../utils/download_helper.dart';
 import '../../widgets/avatar_widget.dart';
+import '../../models/user_model.dart';
+import '../profile/profile_screen.dart';
+import '../profile/user_profile_view_screen.dart';
 import '../story/create_story_screen.dart';
 import '../story/story_viewer_screen.dart';
 import 'create_post_screen.dart';
@@ -31,6 +37,214 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   final PostService _postService = PostService();
   final StoryService _storyService = StoryService();
+  final ChatService _chatService = ChatService();
+  final FriendService _friendService = FriendService();
+
+  void _showSharePostSheet(BuildContext context, PostModel post) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
+                  'Chia sẻ bài viết',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textPrimary),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.repeat_rounded, color: AppColors.primary),
+                  ),
+                  title: Text('Chia sẻ lên trang cá nhân', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+                  subtitle: Text('Đăng lại bài viết này lên Bảng tin & Trang cá nhân của bạn', style: TextStyle(fontSize: 12, color: textSecondary)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _postService.createPost(
+                      content: 'Đã chia sẻ bài viết của ${post.authorName}:\n"${post.content}"',
+                      imageUrl: post.imageUrl,
+                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã chia sẻ bài viết lên trang cá nhân thành công!'),
+                          backgroundColor: AppColors.tealAccent,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.send_rounded, color: Colors.blueAccent),
+                  ),
+                  title: Text('Gửi riêng qua tin nhắn', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+                  subtitle: Text('Gửi bài viết này vào hộp thoại tin nhắn cho bạn bè', style: TextStyle(fontSize: 12, color: textSecondary)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showSendPostToFriendSheet(context, post);
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.link_rounded, color: Colors.orange),
+                  ),
+                  title: Text('Sao chép liên kết bài viết', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+                  subtitle: Text('Sao chép liên kết bài viết để chia sẻ bất cứ đâu', style: TextStyle(fontSize: 12, color: textSecondary)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã sao chép liên kết bài viết!'),
+                        backgroundColor: AppColors.primary,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSendPostToFriendSheet(BuildContext context, PostModel post) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.55,
+          maxChildSize: 0.85,
+          minChildSize: 0.35,
+          builder: (_, scrollCtrl) {
+            return StreamBuilder<List<UserModel>>(
+              stream: _friendService.getFriendsListStream(),
+              builder: (context, snapshot) {
+                final friends = snapshot.data ?? [];
+                return Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Text(
+                      'Gửi bài viết cho bạn bè',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                    ),
+                    const SizedBox(height: 12),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const Center(child: CircularProgressIndicator())
+                    else if (friends.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text('Chưa có bạn bè để gửi', style: TextStyle(color: textSecondary)),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.separated(
+                          controller: scrollCtrl,
+                          itemCount: friends.length,
+                          separatorBuilder: (_, _) => Divider(height: 1, indent: 64, color: isDark ? AppColors.darkBorder : AppColors.border),
+                          itemBuilder: (context, index) {
+                            final friend = friends[index];
+                            return ListTile(
+                              leading: AvatarWidget(photoUrl: friend.photoUrl, name: friend.displayName, radius: 20),
+                              title: Text(friend.displayName, style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
+                              subtitle: Text(friend.email, style: TextStyle(fontSize: 12, color: textSecondary)),
+                              trailing: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                ),
+                                onPressed: () async {
+                                  Navigator.pop(ctx);
+                                  await _chatService.sendMessage(
+                                    receiverId: friend.uid,
+                                    text: '🔗 [Bài viết từ ${post.authorName}]: ${post.content}',
+                                    mediaUrl: post.imageUrl,
+                                  );
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(this.context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Đã gửi bài viết cho ${friend.displayName}!'),
+                                        backgroundColor: AppColors.tealAccent,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text('Gửi', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
   String _formatTimeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
@@ -157,6 +371,24 @@ class _FeedScreenState extends State<FeedScreen> {
                                       comment.content,
                                       style: TextStyle(fontSize: 13, color: textPrimary),
                                     ),
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        final replyPrefix = '@${comment.authorName} ';
+                                        commentController.text = replyPrefix;
+                                        commentController.selection = TextSelection.fromPosition(
+                                          TextPosition(offset: replyPrefix.length),
+                                        );
+                                      },
+                                      child: const Text(
+                                        'Trả lời',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -213,6 +445,116 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
+  void _showNotificationsSheet(BuildContext context) {
+    final currentUserId = Provider.of<AuthProvider>(context, listen: false).firebaseUser?.uid ?? '';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkSurface : AppColors.surface;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          maxChildSize: 0.85,
+          minChildSize: 0.35,
+          builder: (_, scrollCtrl) {
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUserId)
+                  .collection('notifications')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final docs = snapshot.data?.docs ?? [];
+                return Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Thông báo của bạn',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textPrimary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const Center(child: CircularProgressIndicator())
+                    else if (docs.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            Icon(Icons.notifications_none_rounded, size: 48, color: textSecondary.withValues(alpha: 0.4)),
+                            const SizedBox(height: 12),
+                            Text('Chưa có thông báo nào', style: TextStyle(color: textSecondary, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.separated(
+                          controller: scrollCtrl,
+                          itemCount: docs.length,
+                          separatorBuilder: (_, _) => Divider(height: 1, indent: 64, color: isDark ? AppColors.darkBorder : AppColors.border),
+                          itemBuilder: (context, index) {
+                            final data = docs[index].data();
+                            final isLike = data['type'] == 'like_post';
+                            final title = data['title'] as String? ?? 'Thông báo';
+                            final body = data['body'] as String? ?? '';
+                            final ts = data['createdAt'] as Timestamp?;
+                            final timeStr = ts != null ? _formatTimeAgo(ts.toDate()) : 'Vừa xong';
+
+                            return ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: (isLike ? Colors.redAccent : AppColors.primary).withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  isLike ? Icons.favorite_rounded : Icons.chat_rounded,
+                                  color: isLike ? Colors.redAccent : AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary)),
+                              subtitle: Text(body, style: TextStyle(fontSize: 13, color: textSecondary)),
+                              trailing: Text(timeStr, style: TextStyle(fontSize: 11, color: textSecondary)),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
@@ -241,12 +583,39 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: textPrimary, size: 24),
-            tooltip: 'Thông báo',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chưa có thông báo mới.')),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUserId)
+                .collection('notifications')
+                .snapshots(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data?.docs.where((d) => d.data()['isRead'] == false).length ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.notifications_outlined, color: textPrimary, size: 24),
+                    tooltip: 'Thông báo',
+                    onPressed: () => _showNotificationsSheet(context),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.coralDanger,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : '$unreadCount',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -291,7 +660,8 @@ class _FeedScreenState extends State<FeedScreen> {
                             final Map<String, List<StoryModel>> storiesByUser = {};
                             for (final s in stories) {
                               if (s.userId != currentUserId) {
-                                storiesByUser.putIfAbsent(s.userId, () => []).add(s);
+                                final key = s.userName.trim().toLowerCase();
+                                storiesByUser.putIfAbsent(key, () => []).add(s);
                               }
                             }
                             return storiesByUser.values.map((userStories) {
@@ -601,7 +971,10 @@ class _FeedScreenState extends State<FeedScreen> {
     Color textPrimary,
   ) {
     if (userStories.isEmpty) return const SizedBox.shrink();
-    final firstStory = userStories.first;
+    final displayStory = userStories.firstWhere(
+      (s) => s.userAvatar != null && s.userAvatar!.isNotEmpty,
+      orElse: () => userStories.first,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(right: 14),
@@ -639,8 +1012,8 @@ class _FeedScreenState extends State<FeedScreen> {
                     : null,
               ),
               child: AvatarWidget(
-                photoUrl: firstStory.userAvatar,
-                name: firstStory.userName,
+                photoUrl: displayStory.userAvatar,
+                name: displayStory.userName,
                 radius: 28,
               ),
             ),
@@ -648,7 +1021,7 @@ class _FeedScreenState extends State<FeedScreen> {
             SizedBox(
               width: 64,
               child: Text(
-                firstStory.userName,
+                displayStory.userName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -663,6 +1036,29 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
       ),
     );
+  }
+
+  void _navigateToAuthorProfile(PostModel post) {
+    final currentUserId = Provider.of<AuthProvider>(context, listen: false).firebaseUser?.uid;
+    if (post.authorId == currentUserId) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+      );
+    } else {
+      final authorUser = UserModel(
+        uid: post.authorId,
+        displayName: post.authorName,
+        email: '',
+        photoUrl: post.authorAvatar,
+        bio: 'Thành viên SupaChat',
+        createdAt: DateTime.now(),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => UserProfileViewScreen(user: authorUser)),
+      );
+    }
   }
 
   Widget _buildPostCard(
@@ -692,45 +1088,51 @@ class _FeedScreenState extends State<FeedScreen> {
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
             child: Row(
               children: [
-                AvatarWidget(
-                  photoUrl: post.authorAvatar,
-                  name: post.authorName,
-                  radius: 20,
+                GestureDetector(
+                  onTap: () => _navigateToAuthorProfile(post),
+                  child: AvatarWidget(
+                    photoUrl: post.authorAvatar,
+                    name: post.authorName,
+                    radius: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.authorName,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
+                  child: GestureDetector(
+                    onTap: () => _navigateToAuthorProfile(post),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post.authorName,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(
-                            _formatTimeAgo(post.createdAt),
-                            style: TextStyle(fontSize: 11, color: textSecondary),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            post.privacy == 'friends' ? Icons.people_alt_rounded : Icons.public,
-                            size: 11,
-                            color: textSecondary,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            post.privacy == 'friends' ? 'Bạn bè' : 'Công khai',
-                            style: TextStyle(fontSize: 11, color: textSecondary, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              _formatTimeAgo(post.createdAt),
+                              style: TextStyle(fontSize: 11, color: textSecondary),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              post.privacy == 'friends' ? Icons.people_alt_rounded : Icons.public,
+                              size: 11,
+                              color: textSecondary,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              post.privacy == 'friends' ? 'Bạn bè' : 'Công khai',
+                              style: TextStyle(fontSize: 11, color: textSecondary, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 if (post.authorId == currentUserId)
@@ -926,15 +1328,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 // Nút Share
                 IconButton(
                   icon: Icon(Icons.share_outlined, color: textSecondary, size: 20),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã sao chép liên kết bài viết!'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
+                  onPressed: () => _showSharePostSheet(context, post),
                 ),
 
                 // Nút Tải ảnh nếu bài viết có hình ảnh

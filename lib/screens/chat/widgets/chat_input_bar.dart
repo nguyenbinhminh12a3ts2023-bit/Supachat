@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../constants/app_colors.dart';
+import '../../../utils/clipboard_image_helper.dart';
 import '../../../utils/voice_recorder_helper.dart';
 import '../../../widgets/secure_keypad_sheet.dart';
 
@@ -116,6 +117,11 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _textController.addListener(_handleTextChange);
+    ClipboardImageHelper.listenForPastedImages((bytes) {
+      if (widget.onSendImageBytes != null) {
+        widget.onSendImageBytes!(bytes);
+      }
+    });
   }
 
   void _handleTextChange() {
@@ -461,6 +467,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    ClipboardImageHelper.dispose();
     _recordTimer?.cancel();
     _typingTimer?.cancel();
     _textController.removeListener(_handleTextChange);

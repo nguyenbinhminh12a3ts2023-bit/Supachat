@@ -114,6 +114,20 @@ class PostService {
       await postRef.update({
         'likes': FieldValue.arrayUnion([userId]),
       });
+      // Tạo thông báo cho chủ bài viết
+      final authorId = data['authorId'] as String?;
+      if (authorId != null && authorId != userId) {
+        final myName = _auth.currentUser?.displayName ?? 'Một người dùng';
+        try {
+          await _firestore.collection('users').doc(authorId).collection('notifications').add({
+            'type': 'like_post',
+            'title': 'Lượt thích bài viết',
+            'body': '$myName đã thả tim bài viết của bạn.',
+            'createdAt': FieldValue.serverTimestamp(),
+            'isRead': false,
+          });
+        } catch (_) {}
+      }
     }
   }
 
