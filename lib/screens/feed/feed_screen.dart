@@ -286,11 +286,19 @@ class _FeedScreenState extends State<FeedScreen> {
                           // Nút Kho lưu trữ tin
                           _buildArchiveStoryCircle(isDark, textPrimary, textSecondary),
 
-                          // Các Story của bạn bè / người khác
-                          ...stories.where((s) => s.userId != currentUserId).map((story) {
-                            final hasViewed = story.viewers.contains(currentUserId);
-                            return _buildStoryItem(story, stories, hasViewed, isDark, textPrimary);
-                          }),
+                          // Các Story của bạn bè / người khác (Nhóm theo từng người riêng biệt chuẩn Instagram)
+                          ...(() {
+                            final Map<String, List<StoryModel>> storiesByUser = {};
+                            for (final s in stories) {
+                              if (s.userId != currentUserId) {
+                                storiesByUser.putIfAbsent(s.userId, () => []).add(s);
+                              }
+                            }
+                            return storiesByUser.values.map((userStories) {
+                              final hasViewedAll = userStories.every((s) => s.viewers.contains(currentUserId));
+                              return _buildUserStoryItem(userStories, hasViewedAll, isDark, textPrimary);
+                            });
+                          })(),
                         ],
                       ),
                     );
@@ -586,26 +594,27 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  Widget _buildStoryItem(
-    StoryModel story,
-    List<StoryModel> allStories,
+  Widget _buildUserStoryItem(
+    List<StoryModel> userStories,
     bool hasViewed,
     bool isDark,
     Color textPrimary,
   ) {
+    if (userStories.isEmpty) return const SizedBox.shrink();
+    final firstStory = userStories.first;
+
     return Padding(
       padding: const EdgeInsets.only(right: 14),
       child: InkWell(
         borderRadius: BorderRadius.circular(40),
         onTap: () {
-          final storyIndex = allStories.indexOf(story);
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => StoryViewerScreen(
-                stories: allStories,
-                initialIndex: storyIndex >= 0 ? storyIndex : 0,
+                stories: userStories, // Chỉ mở danh sách tin của người này, không bị gộp với người khác
+                initialIndex: 0,
                 currentUserId: authProvider.currentUserModel?.uid ?? '',
               ),
             ),
@@ -630,8 +639,8 @@ class _FeedScreenState extends State<FeedScreen> {
                     : null,
               ),
               child: AvatarWidget(
-                photoUrl: story.userAvatar,
-                name: story.userName,
+                photoUrl: firstStory.userAvatar,
+                name: firstStory.userName,
                 radius: 28,
               ),
             ),
@@ -639,7 +648,7 @@ class _FeedScreenState extends State<FeedScreen> {
             SizedBox(
               width: 64,
               child: Text(
-                story.userName,
+                firstStory.userName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,

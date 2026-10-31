@@ -12,3 +12,4 @@ class DownloadHelper {
     await dl.downloadBytes(bytes, filename: filename);
   }
 }
+
