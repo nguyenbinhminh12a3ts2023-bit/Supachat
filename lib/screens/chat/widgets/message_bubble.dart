@@ -8,6 +8,7 @@ import '../../../constants/music_tracks.dart';
 import '../../../models/message_model.dart';
 import '../../../services/audio_player_service.dart';
 import '../../../services/translation_service.dart';
+import '../../../utils/download_helper.dart';
 import '../../../widgets/avatar_widget.dart';
 
 /// Bong bóng hiển thị tin nhắn (văn bản, hình ảnh, vị trí, tệp tin, sticker, dịch thuật)
@@ -112,6 +113,27 @@ class _MessageBubbleState extends State<MessageBubble> {
                 Icon(Icons.copy_rounded, size: 20, color: AppColors.textSecondary),
                 SizedBox(width: 10),
                 Text('Sao chép', style: TextStyle(color: AppColors.textPrimary)),
+              ],
+            ),
+          ),
+        if (message.type == MessageType.image && message.mediaUrl != null)
+          PopupMenuItem(
+            onTap: () async {
+              await DownloadHelper.downloadImage(message.mediaUrl!);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đang tải hình ảnh về thiết bị...'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Row(
+              children: [
+                Icon(Icons.download_rounded, size: 20, color: AppColors.tealAccent),
+                SizedBox(width: 10),
+                Text('Tải ảnh về máy', style: TextStyle(color: AppColors.textPrimary)),
               ],
             ),
           ),
@@ -805,14 +827,17 @@ class _MessageBubbleState extends State<MessageBubble> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.download_rounded, color: Colors.white),
-                tooltip: 'Lưu ảnh',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ảnh đã được lưu trong ứng dụng!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                tooltip: 'Tải ảnh về máy',
+                onPressed: () async {
+                  await DownloadHelper.downloadImage(mediaUrl);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đang tải hình ảnh về thiết bị...'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 },
               ),
             ],

@@ -4,9 +4,13 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/music_tracks.dart';
 import '../../models/story_model.dart';
+import '../../models/user_model.dart';
 import '../../services/audio_player_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/story_service.dart';
+import '../../utils/download_helper.dart';
 import '../../widgets/avatar_widget.dart';
+import '../chat/chat_screen.dart';
 
 /// Trình xem Tin (Story Viewer) chuẩn Instagram / Facebook
 class StoryViewerScreen extends StatefulWidget {
@@ -201,6 +205,156 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     }
   }
 
+  void _showViewersBottomSheet(BuildContext context, StoryModel story) {
+    _pause();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.55,
+          decoration: const BoxDecoration(
+            color: Color(0xFF141724),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Thanh kéo
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Tiêu đề & Đếm
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.visibility_rounded, color: AppColors.tealAccent, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Người đã xem (${story.viewers.length})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+
+              // Danh sách người xem
+              Expanded(
+                child: story.viewers.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.visibility_off_outlined, size: 48, color: Colors.white38),
+                            SizedBox(height: 12),
+                            Text(
+                              'Chưa có ai xem tin này',
+                              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Tin của bạn sẽ hiển thị với bạn bè trong vòng 24 giờ.',
+                              style: TextStyle(color: Colors.white38, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    : FutureBuilder<List<UserModel>>(
+                        future: _fetchViewers(story.viewers),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          final viewers = snapshot.data ?? [];
+                          if (viewers.isEmpty) {
+                            return Center(
+                              child: Text(
+                                '${story.viewers.length} người đã xem tin',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            );
+                          }
+
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: viewers.length,
+                            itemBuilder: (context, idx) {
+                              final user = viewers[idx];
+                              return ListTile(
+                                leading: AvatarWidget(
+                                  photoUrl: user.photoUrl,
+                                  name: user.displayName,
+                                  radius: 22,
+                                  showOnlineStatus: true,
+                                  isOnline: user.isActuallyOnline,
+                                ),
+                                title: Text(
+                                  user.displayName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  user.isActuallyOnline ? 'Đang hoạt động' : user.onlineStatusText,
+                                  style: TextStyle(
+                                    color: user.isActuallyOnline ? AppColors.tealAccent : Colors.white38,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primaryLight, size: 20),
+                                  tooltip: 'Nhắn tin',
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatScreen(receiverUser: user),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((_) => _resume());
+  }
+
+  Future<List<UserModel>> _fetchViewers(List<String> uids) async {
+    final futures = uids.map((uid) => AuthService().getUserProfile(uid));
+    final results = await Future.wait(futures);
+    return results.whereType<UserModel>().toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_currentIndex >= widget.stories.length) return const SizedBox.shrink();
@@ -227,6 +381,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
           },
           onLongPressStart: (_) => _pause(),
           onLongPressEnd: (_) => _resume(),
+          onVerticalDragEnd: (details) {
+            if (details.primaryVelocity != null && details.primaryVelocity! < -200 && isMyStory) {
+              _showViewersBottomSheet(context, story);
+            }
+          },
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -438,6 +597,26 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                             ),
                             const Spacer(),
 
+                            // Download story image button
+                            if (story.imageUrl != null && story.imageUrl!.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.download_rounded, color: Colors.white, size: 22),
+                                tooltip: 'Tải tin về máy',
+                                onPressed: () async {
+                                  _pause();
+                                  await DownloadHelper.downloadImage(story.imageUrl!);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Đang tải hình ảnh tin về thiết bị...'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                  _resume();
+                                },
+                              ),
+
                             // Delete button if my story
                             if (isMyStory)
                               IconButton(
@@ -469,27 +648,32 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                 child: SafeArea(
                   top: false,
                   child: isMyStory
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white24, width: 0.8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.visibility_outlined, color: Colors.white70, size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${story.viewers.length} người đã xem',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                      ? GestureDetector(
+                          onTap: () => _showViewersBottomSheet(context, story),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: Colors.white24, width: 0.8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.visibility_outlined, color: Colors.white70, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${story.viewers.length} người đã xem',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70, size: 18),
+                              ],
+                            ),
                           ),
                         )
                       : Row(

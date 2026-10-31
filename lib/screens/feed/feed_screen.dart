@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/audio_player_service.dart';
 import '../../services/post_service.dart';
 import '../../services/story_service.dart';
+import '../../utils/download_helper.dart';
 import '../../widgets/avatar_widget.dart';
 import '../story/create_story_screen.dart';
 import '../story/story_viewer_screen.dart';
@@ -926,6 +927,24 @@ class _FeedScreenState extends State<FeedScreen> {
                     );
                   },
                 ),
+
+                // Nút Tải ảnh nếu bài viết có hình ảnh
+                if (post.imageUrl != null)
+                  IconButton(
+                    icon: Icon(Icons.download_rounded, color: textSecondary, size: 20),
+                    tooltip: 'Tải ảnh bài viết về máy',
+                    onPressed: () async {
+                      await DownloadHelper.downloadImage(post.imageUrl!);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đang tải hình ảnh bài viết về thiết bị...'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
               ],
             ),
           ),
