@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
@@ -19,11 +19,12 @@ class IncomingCallListener extends StatefulWidget {
 
 class _IncomingCallListenerState extends State<IncomingCallListener> {
   String? _activeShowingCallId;
+  BuildContext? _dialogContext;
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final myUid = authProvider.firebaseUser?.uid ?? '';
+    final myUid = authProvider.currentUserModel?.uid ?? authProvider.firebaseUser?.uid ?? '';
 
     if (myUid.isEmpty) {
       return widget.child;
@@ -47,7 +48,12 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
             });
           }
         } else {
+          // Khi người gọi đã tắt cuộc gọi trước khi người nhận nhấc máy
+          if (_activeShowingCallId != null && _dialogContext != null && _dialogContext!.mounted) {
+            Navigator.of(_dialogContext!).pop();
+          }
           _activeShowingCallId = null;
+          _dialogContext = null;
         }
 
         return widget.child;
@@ -65,113 +71,115 @@ class _IncomingCallListenerState extends State<IncomingCallListener> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF141724),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.7),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AvatarWidget(
-                photoUrl: callerAvatar,
-                name: callerName,
-                radius: 44,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                callerName,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+      builder: (ctx) {
+        _dialogContext = ctx;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141724),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Đang gọi thoại cho bạn...',
-                style: TextStyle(color: AppColors.tealAccent, fontSize: 13),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Từ chối (Đỏ)
-                  Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          CallService().declineCall(callId);
-                          Navigator.pop(ctx);
-                        },
-                        child: Container(
-                          width: 58,
-                          height: 58,
-                          decoration: const BoxDecoration(
-                            color: AppColors.coralDanger,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 28),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text('Từ chối', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AvatarWidget(
+                  photoUrl: callerAvatar,
+                  name: callerName,
+                  radius: 44,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  callerName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  // Trả lời (Xanh)
-                  Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () async {
-                          await CallService().acceptCall(callId);
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RealAudioCallScreen(
-                                  callId: callId,
-                                  otherUserId: callerId,
-                                  otherUserName: callerName,
-                                  otherUserAvatar: callerAvatar,
-                                  isCaller: false,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Đang gọi thoại cho bạn...',
+                  style: TextStyle(color: AppColors.tealAccent, fontSize: 13),
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Từ chối (Đỏ)
+                    Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            CallService().declineCall(callId, callerId: callerId);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          },
+                          child: Container(
+                            width: 58,
+                            height: 58,
+                            decoration: const BoxDecoration(
+                              color: AppColors.coralDanger,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 28),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text('Từ chối', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
+                    // Trả lời (Xanh)
+                    Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            await CallService().acceptCall(callId);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => RealAudioCallScreen(
+                                    callId: callId,
+                                    otherUserId: callerId,
+                                    otherUserName: callerName,
+                                    otherUserAvatar: callerAvatar,
+                                    isCaller: false,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          width: 58,
-                          height: 58,
-                          decoration: const BoxDecoration(
-                            color: AppColors.tealAccent,
-                            shape: BoxShape.circle,
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: 58,
+                            height: 58,
+                            decoration: const BoxDecoration(
+                              color: AppColors.tealAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.call_rounded, color: Colors.white, size: 28),
                           ),
-                          child: const Icon(Icons.call_rounded, color: Colors.white, size: 28),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text('Trả lời', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                        const SizedBox(height: 6),
+                        const Text('Trả lời', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
-

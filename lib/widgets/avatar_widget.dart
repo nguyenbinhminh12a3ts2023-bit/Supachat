@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
@@ -29,7 +29,10 @@ class AvatarWidget extends StatelessWidget {
 
     final hasCustomPhoto = photoUrl != null &&
         photoUrl!.trim().isNotEmpty &&
-        !photoUrl!.contains('default_avatar');
+        !photoUrl!.contains('default_avatar') &&
+        !photoUrl!.contains('googleusercontent.com') &&
+        !photoUrl!.contains('ggpht.com') &&
+        !photoUrl!.contains('google.com');
 
     if (hasCustomPhoto) {
       if (photoUrl!.startsWith('data:image')) {

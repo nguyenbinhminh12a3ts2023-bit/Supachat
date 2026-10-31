@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +7,7 @@ import '../../../constants/music_tracks.dart';
 import '../../../models/message_model.dart';
 import '../../../services/audio_player_service.dart';
 import '../../../services/translation_service.dart';
+import '../../../widgets/avatar_widget.dart';
 
 /// Bong bóng hiển thị tin nhắn (văn bản, hình ảnh, vị trí, tệp tin, sticker, dịch thuật)
 class MessageBubble extends StatefulWidget {
@@ -14,6 +15,9 @@ class MessageBubble extends StatefulWidget {
   final bool isMe;
   final VoidCallback? onDelete;
   final VoidCallback? onUnsend;
+  final String? senderAvatar;
+  final String? senderName;
+  final bool showAvatar;
 
   const MessageBubble({
     super.key,
@@ -21,6 +25,9 @@ class MessageBubble extends StatefulWidget {
     required this.isMe,
     this.onDelete,
     this.onUnsend,
+    this.senderAvatar,
+    this.senderName,
+    this.showAvatar = true,
   });
 
   @override
@@ -182,35 +189,72 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
 
     // 2. THÔNG BÁO BÀN PHÍM BẢO MẬT & CUỘC GỌI
-    if (message.type == MessageType.secureKeypadNotice || message.type == MessageType.callNotice) {
-      final isCall = message.type == MessageType.callNotice;
+    if (message.type == MessageType.secureKeypadNotice) {
       return Center(
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 24),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: (isCall ? AppColors.tealAccent : AppColors.primary).withValues(alpha: 0.12),
+            color: AppColors.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.primaryLight),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  message.text,
+                  style: const TextStyle(
+                    color: AppColors.primaryLight,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (message.type == MessageType.callNotice) {
+      final isMissed = message.text.contains('nhỡ') ||
+          message.text.contains('Từ chối') ||
+          message.text.contains('kết thúc');
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isMissed
+                ? AppColors.coralDanger.withValues(alpha: 0.12)
+                : AppColors.tealAccent.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: (isCall ? AppColors.tealAccent : AppColors.primary).withValues(alpha: 0.3),
+              color: isMissed
+                  ? AppColors.coralDanger.withValues(alpha: 0.35)
+                  : AppColors.tealAccent.withValues(alpha: 0.35),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isCall ? Icons.phone_callback_rounded : Icons.lock_outline_rounded,
-                size: 14,
-                color: isCall ? AppColors.tealAccent : AppColors.primaryLight,
+                isMissed ? Icons.phone_missed_rounded : Icons.phone_in_talk_rounded,
+                size: 16,
+                color: isMissed ? AppColors.coralDanger : AppColors.tealAccent,
               ),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  message.text,
+                  '${message.text} • $timeStr',
                   style: TextStyle(
-                    color: isCall ? AppColors.tealAccent : AppColors.primaryLight,
+                    color: isMissed ? AppColors.coralDanger : AppColors.tealAccent,
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -226,16 +270,33 @@ class _MessageBubbleState extends State<MessageBubble> {
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                message.text,
-                style: const TextStyle(fontSize: 48),
-              ),
-              Text(
-                timeStr,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+              if (!isMe) ...[
+                if (widget.showAvatar)
+                  AvatarWidget(
+                    photoUrl: widget.senderAvatar,
+                    name: widget.senderName ?? 'Bạn',
+                    radius: 14,
+                  )
+                else
+                  const SizedBox(width: 28),
+                const SizedBox(width: 8),
+              ],
+              Column(
+                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.text,
+                    style: const TextStyle(fontSize: 48),
+                  ),
+                  Text(
+                    timeStr,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                  ),
+                ],
               ),
             ],
           ),
@@ -249,34 +310,26 @@ class _MessageBubbleState extends State<MessageBubble> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxWidth: MediaQuery.of(context).size.width * 0.82,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Nút dịch nhanh bên cạnh tin nhắn của đối phương
-            if (!isMe && message.type == MessageType.text) ...[
-              IconButton(
-                icon: _isTranslating
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 1.5),
-                      )
-                    : Icon(
-                        Icons.g_translate_rounded,
-                        size: 18,
-                        color: _translatedText != null ? AppColors.tealAccent : AppColors.textSecondary,
-                      ),
-                tooltip: 'Dịch tin nhắn',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                onPressed: _translateMessage,
-              ),
-              const SizedBox(width: 4),
+            // Avatar của đối phương bên trái cố định 28px (không giật khi dịch)
+            if (!isMe) ...[
+              if (widget.showAvatar)
+                AvatarWidget(
+                  photoUrl: widget.senderAvatar,
+                  name: widget.senderName ?? 'Bạn',
+                  radius: 14,
+                )
+              else
+                const SizedBox(width: 28),
+              const SizedBox(width: 8),
             ],
 
+            // Khung bong bóng tin nhắn
             Flexible(
               child: GestureDetector(
                 onLongPress: () => _showMessageOptions(context),
@@ -394,6 +447,28 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ),
               ),
             ),
+
+            // Nút dịch nhanh bên phải bong bóng đối phương -> không làm giật avatar bên trái
+            if (!isMe && message.type == MessageType.text) ...[
+              const SizedBox(width: 4),
+              IconButton(
+                icon: _isTranslating
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                      )
+                    : Icon(
+                        Icons.g_translate_rounded,
+                        size: 18,
+                        color: _translatedText != null ? AppColors.tealAccent : AppColors.textSecondary,
+                      ),
+                tooltip: 'Dịch tin nhắn',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: _translateMessage,
+              ),
+            ],
           ],
         ),
       ),

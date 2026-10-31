@@ -94,9 +94,13 @@ class AuthProvider with ChangeNotifier {
       if (remoteProfile != null) {
         final existingAvatar = _currentUserModel?.photoUrl;
         final remoteAvatar = remoteProfile.photoUrl;
-        final finalAvatar = (remoteAvatar != null && remoteAvatar.trim().isNotEmpty)
+        String? finalAvatar = (remoteAvatar != null && remoteAvatar.trim().isNotEmpty)
             ? remoteAvatar
-            : ((existingAvatar != null && existingAvatar.trim().isNotEmpty) ? existingAvatar : user.photoURL);
+            : ((existingAvatar != null && existingAvatar.trim().isNotEmpty) ? existingAvatar : null);
+        // Không lấy avatar từ tài khoản Google/Gmail
+        if (finalAvatar != null && (finalAvatar.contains('googleusercontent.com') || finalAvatar.contains('ggpht.com') || finalAvatar.contains('google.com'))) {
+          finalAvatar = null;
+        }
 
         _currentUserModel = remoteProfile.copyWith(photoUrl: finalAvatar);
         await _saveLocalUserProfile(_currentUserModel!);
@@ -105,7 +109,7 @@ class AuthProvider with ChangeNotifier {
           uid: user.uid,
           email: user.email ?? 'user@supachat.com',
           displayName: user.displayName?.isNotEmpty == true ? user.displayName! : 'Người dùng Supa',
-          photoUrl: user.photoURL,
+          photoUrl: null, // Chỉ nhận avatar riêng của app, không nhận avatar Google
           createdAt: DateTime.now(),
         );
         await _saveLocalUserProfile(_currentUserModel!);

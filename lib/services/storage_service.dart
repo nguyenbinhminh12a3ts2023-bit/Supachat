@@ -1,23 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image/image.dart' as img;
 
-/// Dịch vụ xử lý nén ảnh tối ưu và tải file lên Firebase Storage
-/// Hỗ trợ nén JPEG siêu nhẹ (<80KB) giúp lưu trực tiếp Firestore hoặc Storage
+/// Dịch vụ xử lý nén ảnh tối ưu và lưu trữ đa nền tảng
+/// Hỗ trợ nén JPEG siêu nhẹ (<60KB) giúp lưu trực tiếp Firestore hoặc Storage
 /// đảm bảo tốc độ tức thì, không giật lag, không bao giờ mất ảnh
 class StorageService {
-  FirebaseStorage get _storage {
-    try {
-      if (Firebase.apps.isNotEmpty) {
-        return FirebaseStorage.instance;
-      }
-    } catch (_) {}
-    return FirebaseStorage.instance;
-  }
-
   /// Nén và chuẩn hóa ảnh kích thước an toàn (< 100KB) hoạt động 100% trên cả Web & Mobile
   static Uint8List compressToSafeJpeg(Uint8List rawBytes, {int maxWidth = 960, int quality = 75}) {
     if (rawBytes.lengthInBytes <= 60 * 1024) {
@@ -48,23 +37,14 @@ class StorageService {
     return compressToSafeJpeg(rawBytes, maxWidth: targetWidth, quality: 75);
   }
 
-  /// Tải ảnh đại diện người dùng lên Firebase Storage dạng Bytes (Hoạt động đa nền tảng Web & Mobile)
+  /// Tải ảnh đại diện người dùng dạng Bytes (Tối ưu JPEG siêu nhẹ < 40KB, lưu Firestore an toàn tức thì)
   Future<String> uploadAvatarBytes({
     required String uid,
     required Uint8List bytes,
     String contentType = 'image/jpeg',
   }) async {
     final optimizedBytes = compressToSafeJpeg(bytes, maxWidth: 240, quality: 80);
-    try {
-      final ref = _storage.ref().child('avatars').child('$uid.jpg');
-      final metadata = SettableMetadata(contentType: 'image/jpeg');
-      final uploadTask = await ref.putData(optimizedBytes, metadata).timeout(const Duration(seconds: 3));
-      final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 2));
-      return downloadUrl;
-    } catch (e) {
-      debugPrint('Lưu ý upload avatar lên Storage: $e -> Lưu data URI siêu nhẹ');
-      return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
-    }
+    return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
   }
 
   /// Tải ảnh đại diện người dùng lên Firebase Storage (File)
@@ -80,24 +60,13 @@ class StorageService {
     }
   }
 
-  /// Tải ảnh gửi trong phòng chat lên Firebase Storage dạng Bytes (Hỗ trợ Web & Mobile)
+  /// Tải ảnh gửi trong phòng chat dạng Bytes (Tức thì, không giật lag, không chờ đợi)
   Future<String> uploadChatImageBytes({
     required String roomId,
     required Uint8List bytes,
   }) async {
     final optimizedBytes = compressToSafeJpeg(bytes, maxWidth: 800, quality: 75);
-    try {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final ref = _storage.ref().child('chats').child(roomId).child('$timestamp.jpg');
-      final metadata = SettableMetadata(contentType: 'image/jpeg');
-
-      final uploadTask = await ref.putData(optimizedBytes, metadata).timeout(const Duration(seconds: 3));
-      final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 2));
-      return downloadUrl;
-    } catch (e) {
-      debugPrint('Lưu ý upload ảnh chat: $e -> Lưu data URI siêu nhẹ');
-      return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
-    }
+    return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
   }
 
   /// Tải ảnh gửi trong phòng chat lên Firebase Storage (File)
@@ -113,39 +82,19 @@ class StorageService {
     }
   }
 
-  /// Tải tệp tin tài liệu lên Firebase Storage
+  /// Tải tệp tin tài liệu dạng Bytes
   Future<String> uploadFileBytes({
     required String roomId,
     required Uint8List bytes,
     required String fileName,
   }) async {
-    try {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final ref = _storage.ref().child('files').child(roomId).child('${timestamp}_$fileName');
-      final uploadTask = await ref.putData(bytes).timeout(const Duration(seconds: 4));
-      final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 2));
-      return downloadUrl;
-    } catch (e) {
-      debugPrint('Lưu ý upload file: $e');
-      return 'data:application/octet-stream;base64,${base64Encode(bytes)}';
-    }
+    return 'data:application/octet-stream;base64,${base64Encode(bytes)}';
   }
 
-  /// Tải ảnh bài viết lên Firebase Storage dạng Bytes (Hỗ trợ tốt trên cả Web & Mobile)
+  /// Tải ảnh bài viết / tin story dạng Bytes (Nén JPEG < 60KB, đăng ngay trong 0.1s)
   Future<String> uploadPostImageBytes({required Uint8List bytes}) async {
-    final optimizedBytes = compressToSafeJpeg(bytes, maxWidth: 960, quality: 75);
-    try {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final ref = _storage.ref().child('posts').child('$timestamp.jpg');
-      final metadata = SettableMetadata(contentType: 'image/jpeg');
-
-      final uploadTask = await ref.putData(optimizedBytes, metadata).timeout(const Duration(seconds: 3));
-      final downloadUrl = await uploadTask.ref.getDownloadURL().timeout(const Duration(seconds: 2));
-      return downloadUrl;
-    } catch (e) {
-      debugPrint('Lưu ý upload ảnh lên Storage: $e -> Lưu data URI siêu nhẹ an toàn');
-      return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
-    }
+    final optimizedBytes = compressToSafeJpeg(bytes, maxWidth: 800, quality: 70);
+    return 'data:image/jpeg;base64,${base64Encode(optimizedBytes)}';
   }
 
   /// Tải ảnh bài viết lên Firebase Storage (File cho mobile)

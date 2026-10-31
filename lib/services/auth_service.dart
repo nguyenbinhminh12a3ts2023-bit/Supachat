@@ -29,7 +29,7 @@ class AuthService {
           uid: user.uid,
           email: user.email ?? '',
           displayName: displayName,
-          photoUrl: user.photoURL,
+          photoUrl: null, // Không lấy avatar mặc định từ Google, chỉ dùng avatar SupaChat
           bio: null,
           isOnline: true,
           lastSeen: DateTime.now(),
@@ -43,8 +43,6 @@ class AuthService {
           'lastSeen': FieldValue.serverTimestamp(),
           if (user.displayName != null && user.displayName!.isNotEmpty)
             'displayName': user.displayName,
-          if (user.photoURL != null && user.photoURL!.isNotEmpty)
-            'photoUrl': user.photoURL,
         }, SetOptions(merge: true));
       }
     } catch (e) {
@@ -219,7 +217,6 @@ class AuthService {
             await docRef.set({
               'isOnline': true,
               'lastSeen': FieldValue.serverTimestamp(),
-              if (user.photoURL != null) 'photoUrl': user.photoURL,
             }, SetOptions(merge: true)).timeout(const Duration(seconds: 10));
           } catch (_) {}
           return UserModel.fromDocument(doc);
@@ -228,7 +225,7 @@ class AuthService {
             uid: user.uid,
             email: user.email ?? '',
             displayName: user.displayName ?? (user.email?.split('@').first ?? 'Người dùng'),
-            photoUrl: user.photoURL,
+            photoUrl: null, // Không lấy avatar Gmail/Google
             bio: null,
             isOnline: true,
             lastSeen: DateTime.now(),
@@ -272,7 +269,7 @@ class AuthService {
           uid: user.uid,
           email: user.email ?? '',
           displayName: user.displayName ?? 'Người dùng Google',
-          photoUrl: user.photoURL,
+          photoUrl: null, // Không lấy avatar Gmail/Google
           bio: null,
           isOnline: true,
           lastSeen: DateTime.now(),
@@ -283,12 +280,11 @@ class AuthService {
         } catch (_) {}
         return newUser;
       } else {
-        // Cập nhật trạng thái online & ảnh đại diện mới nhất (nếu có)
+        // Cập nhật trạng thái online
         try {
           await _firestore.collection('users').doc(user.uid).update({
             'isOnline': true,
             'lastSeen': FieldValue.serverTimestamp(),
-            if (user.photoURL != null) 'photoUrl': user.photoURL,
           }).timeout(const Duration(seconds: 10));
         } catch (_) {}
         return UserModel.fromDocument(userDoc);

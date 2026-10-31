@@ -350,7 +350,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     onChanged: _onSearchChanged,
                     style: TextStyle(fontSize: 14, color: textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'Tìm theo tên (Hoàng Duy Mạnh) hoặc email...',
+                      hintText: 'Tìm kiếm...',
                       hintStyle: TextStyle(fontSize: 13, color: textSecondary),
                       prefixIcon: Icon(Icons.search_rounded, color: AppColors.primary, size: 22),
                       suffixIcon: _searchController.text.isNotEmpty

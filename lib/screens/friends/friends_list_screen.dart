@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../models/friend_request_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/locale_provider.dart';
 import '../../services/friend_service.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/real_audio_call_screen.dart';
@@ -30,6 +32,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localeProvider = Provider.of<LocaleProvider>(context);
     final bg = isDark ? AppColors.darkBackground : AppColors.background;
     final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
     final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
@@ -52,7 +55,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bạn bè',
+                        localeProvider.t('Bạn bè', 'Friends'),
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w700,
@@ -62,7 +65,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Kết nối với những người bạn quan tâm.',
+                        localeProvider.t('Kết nối với những người bạn quan tâm.', 'Connect with people you care about.'),
                         style: TextStyle(
                           fontSize: 13,
                           color: textSecondary,
@@ -128,7 +131,7 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   },
                   style: TextStyle(fontSize: 14, color: textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'Tìm người bạn muốn kết nối',
+                    hintText: localeProvider.t('Tìm người bạn muốn kết nối', 'Search friends...'),
                     hintStyle: TextStyle(fontSize: 14, color: textSecondary),
                     prefixIcon: Icon(Icons.search_rounded, size: 20, color: textSecondary),
                     border: InputBorder.none,
@@ -150,12 +153,14 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
                   child: Row(
                     children: [
-                      _buildFilterChip('Tất cả', 0, isDark),
+                      _buildFilterChip(localeProvider.t('Tất cả', 'All'), 0, isDark),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Trực tuyến', 1, isDark),
+                      _buildFilterChip(localeProvider.t('Trực tuyến', 'Online'), 1, isDark),
                       const SizedBox(width: 8),
                       _buildFilterChip(
-                        pendingCount > 0 ? 'Lời mời ($pendingCount)' : 'Lời mời',
+                        pendingCount > 0
+                            ? '${localeProvider.t("Lời mời", "Requests")} ($pendingCount)'
+                            : localeProvider.t('Lời mời', 'Requests'),
                         2,
                         isDark,
                         badgeCount: pendingCount,

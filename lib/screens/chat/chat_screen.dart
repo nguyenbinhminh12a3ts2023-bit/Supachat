@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -229,6 +229,48 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildDateHeader(DateTime date, bool isDark) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(date.year, date.month, date.day);
+    final difference = today.difference(messageDate).inDays;
+
+    String dateText;
+    if (difference == 0) {
+      dateText = 'Hôm nay';
+    } else if (difference == 1) {
+      dateText = 'Hôm qua';
+    } else if (difference < 7 && difference > 1) {
+      const weekdays = ['', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+      dateText = weekdays[date.weekday];
+    } else {
+      dateText = DateFormat('dd/MM/yyyy').format(date);
+    }
+
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E2235) : const Color(0xFFE8EAF6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black12,
+            width: 0.6,
+          ),
+        ),
+        child: Text(
+          dateText,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white70 : const Color(0xFF5C6B73),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -414,12 +456,35 @@ class _ChatScreenState extends State<ChatScreen> {
                         final message = messages[index];
                         final isMe = message.senderId == _currentUserId;
 
-                        return MessageBubble(
-                          key: ValueKey(message.id),
-                          message: message,
-                          isMe: isMe,
-                          onDelete: () => _handleDeleteMessage(message),
-                          onUnsend: isMe ? () => _handleUnsendMessage(message) : null,
+                        // Tính toán hiển thị Ngày phân cách (Ngày đổi)
+                        // Trong ListView reverse: true, tin nhắn cũ hơn nằm ở index + 1
+                        bool isDifferentDay = false;
+                        if (index == messages.length - 1) {
+                          isDifferentDay = true;
+                        } else {
+                          final olderMessage = messages[index + 1];
+                          isDifferentDay = message.timestamp.year != olderMessage.timestamp.year ||
+                              message.timestamp.month != olderMessage.timestamp.month ||
+                              message.timestamp.day != olderMessage.timestamp.day;
+                        }
+
+                        // Hiển thị avatar đối phương ở tin nhắn dưới cùng trong chuỗi gửi liên tiếp
+                        final bool isLastInGroup = index == 0 || messages[index - 1].senderId != message.senderId;
+
+                        return Column(
+                          children: [
+                            if (isDifferentDay) _buildDateHeader(message.timestamp, isDark),
+                            MessageBubble(
+                              key: ValueKey(message.id),
+                              message: message,
+                              isMe: isMe,
+                              senderAvatar: widget.receiverUser.photoUrl,
+                              senderName: widget.receiverUser.displayName,
+                              showAvatar: isLastInGroup,
+                              onDelete: () => _handleDeleteMessage(message),
+                              onUnsend: isMe ? () => _handleUnsendMessage(message) : null,
+                            ),
+                          ],
                         );
                       },
                     );

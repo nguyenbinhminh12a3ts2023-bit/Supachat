@@ -133,7 +133,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
         final bytes = base64Decode(base64Str);
         imageWidget = Image.memory(
           bytes,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: double.infinity,
           errorBuilder: (_, error, stack) => _buildFallback(bgColor),
         );
       } catch (_) {
@@ -142,7 +144,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     } else {
       imageWidget = Image.network(
         url,
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
         errorBuilder: (_, error, stack) => _buildFallback(bgColor),
       );
     }
@@ -151,9 +155,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
       color: Colors.black,
       width: double.infinity,
       height: double.infinity,
-      child: Center(
-        child: imageWidget,
-      ),
+      child: imageWidget,
     );
   }
 
@@ -203,11 +205,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
   Widget build(BuildContext context) {
     if (_currentIndex >= widget.stories.length) return const SizedBox.shrink();
     final story = widget.stories[_currentIndex];
-    final isMyStory = story.userId == widget.currentUserId;
+    final myUid = widget.currentUserId.isNotEmpty ? widget.currentUserId : (_storyService.currentUserId ?? '');
+    final isMyStory = story.userId == myUid;
     final bgColor = _hexToColor(story.backgroundColor);
 
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false,
       body: SizedBox.expand(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
