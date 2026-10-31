@@ -24,7 +24,7 @@
 </head>
 <body>
   <script>
-    // Xóa sạch toàn bộ Service Worker và CacheStorage cũ để luôn tải bản mới nhất
+    // 1. Xóa sạch mọi Service Worker và CacheStorage cũ
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (let registration of registrations) {
@@ -39,7 +39,12 @@
         }
       });
     }
+
+    // 2. Tắt hoàn toàn Service Worker để không bao giờ bị dính cache cũ
+    window.flutterConfiguration = {
+      serviceWorkerSettings: null
+    };
   </script>
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="flutter_bootstrap.js?v=20261031_1545" async></script>
 </body>
 </html>

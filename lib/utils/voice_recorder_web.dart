@@ -127,7 +127,8 @@ class VoiceRecorderHelper {
           final mimeMatch = RegExp(r'data:(.*?);base64').firstMatch(header);
           final mimeType = mimeMatch?.group(1) ?? 'audio/webm';
 
-          final bytes = base64Decode(base64Data);
+          final cleanBase64 = base64Data.replaceAll(RegExp(r'\s+'), '');
+          final bytes = base64Decode(cleanBase64);
           final blob = html.Blob([bytes], mimeType);
           return html.Url.createObjectUrl(blob);
         }
