@@ -106,13 +106,19 @@ class CallService {
     required String receiverId,
     required int durationSeconds,
   }) async {
-    try {
-      await _firestore.collection('calls').doc(callId).update({
-        'status': 'ended',
-        'durationSeconds': durationSeconds,
-        'endedAt': FieldValue.serverTimestamp(),
-      });
+    // 1. Cập nhật trạng thái cuộc gọi trên collection calls
+    if (callId.isNotEmpty) {
+      try {
+        await _firestore.collection('calls').doc(callId).update({
+          'status': 'ended',
+          'durationSeconds': durationSeconds,
+          'endedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
 
+    // 2. Ghi nhận thông báo vào phòng chat độc lập
+    try {
       final senderId = currentUserId;
       if (senderId == null) return;
 

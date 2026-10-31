@@ -30,9 +30,9 @@ class PresenceService with WidgetsBindingObserver {
     // Cập nhật online ngay lập tức
     setOnline(true);
 
-    // Gửi nhịp tim định kỳ 30 giây để duy trì trạng thái online
+    // Gửi nhịp tim định kỳ 3 phút để duy trì trạng thái online và tiết kiệm hạn ngạch ghi Firestore
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 3), (_) {
       _pingHeartbeat();
     });
   }
@@ -81,7 +81,7 @@ class PresenceService with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       setOnline(true);
       _heartbeatTimer?.cancel();
-      _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _heartbeatTimer = Timer.periodic(const Duration(minutes: 3), (_) {
         _pingHeartbeat();
       });
     } else if (state == AppLifecycleState.paused ||
