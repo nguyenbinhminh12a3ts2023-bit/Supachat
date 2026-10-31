@@ -8,6 +8,7 @@ import '../../../models/message_model.dart';
 import '../../../services/audio_player_service.dart';
 import '../../../services/translation_service.dart';
 import '../../../utils/download_helper.dart';
+import '../../../utils/url_helper.dart';
 import '../../../utils/voice_recorder_helper.dart';
 import '../../../widgets/avatar_widget.dart';
 import '../../../widgets/post_detail_modal.dart';
@@ -557,42 +558,84 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   Widget _buildLocationContent(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          height: 90,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    final lat = widget.message.latitude;
+    final lng = widget.message.longitude;
+    final hasCoords = lat != null && lng != null && (lat != 0.0 || lng != 0.0);
+    final mapUrl = hasCoords ? 'https://www.google.com/maps/search/?api=1&query=$lat,$lng' : null;
+
+    return InkWell(
+      onTap: mapUrl != null ? () => UrlHelper.openUrl(mapUrl) : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            height: 95,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(12),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: AppColors.electricBlue.withValues(alpha: 0.3)),
             ),
-            border: Border.all(color: AppColors.electricBlue.withValues(alpha: 0.3)),
-          ),
-          child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Stack(
               children: [
-                Icon(Icons.location_on_rounded, color: AppColors.coralDanger, size: 28),
-                SizedBox(width: 8),
-                Text(
-                  'Bản đồ vị trí',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.location_on_rounded, color: AppColors.coralDanger, size: 30),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasCoords ? '📍 ${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°' : 'Bản đồ vị trí',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
+                if (hasCoords)
+                  Positioned(
+                    top: 6,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.open_in_new_rounded, color: Colors.white, size: 10),
+                          SizedBox(width: 3),
+                          Text('Maps', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          widget.message.text,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            widget.message.text,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+          ),
+          if (widget.message.locationAddress != null &&
+              widget.message.locationAddress!.isNotEmpty &&
+              widget.message.locationAddress != widget.message.text) ...[
+            const SizedBox(height: 4),
+            Text(
+              widget.message.locationAddress!,
+              style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

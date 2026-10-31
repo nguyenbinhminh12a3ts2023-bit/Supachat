@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../constants/app_colors.dart';
 import '../../../utils/clipboard_image_helper.dart';
+import '../../../utils/geolocation_helper.dart';
 import '../../../utils/voice_recorder_helper.dart';
 import '../../../widgets/secure_keypad_sheet.dart';
 
@@ -52,10 +53,14 @@ class ChatInputBar extends StatefulWidget {
 
 class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
+  late final FocusNode _focusNode;
   final ImagePicker _picker = ImagePicker();
   bool _showEmojiPanel = false;
   Timer? _typingTimer;
   bool _isTyping = false;
+
+  // Ảnh đính kèm chờ gửi (khi Paste hoặc Chọn ảnh từ thư viện)
+  Uint8List? _pendingImageBytes;
 
   // Trạng thái ghi âm Voice
   bool _isRecording = false;
@@ -116,10 +121,25 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode(
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+          if (!HardwareKeyboard.instance.isShiftPressed) {
+            _handleSend();
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+    );
     _textController.addListener(_handleTextChange);
+    // Khi dán ảnh từ clipboard (Ctrl+V): chỉ đính kèm ảnh vào ô soạn thảo chờ người dùng nhấn Enter / nút Gửi
     ClipboardImageHelper.listenForPastedImages((bytes) {
-      if (widget.onSendImageBytes != null) {
-        widget.onSendImageBytes!(bytes);
+      if (mounted) {
+        setState(() {
+          _pendingImageBytes = bytes;
+        });
+        _focusNode.requestFocus();
       }
     });
   }
@@ -145,6 +165,19 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
 
   void _handleSend() {
     final text = _textController.text.trim();
+    final imageBytes = _pendingImageBytes;
+
+    // 1. Gửi ảnh đính kèm nếu có
+    if (imageBytes != null) {
+      if (widget.onSendImageBytes != null) {
+        widget.onSendImageBytes!(imageBytes);
+      }
+      setState(() {
+        _pendingImageBytes = null;
+      });
+    }
+
+    // 2. Gửi văn bản tin nhắn nếu có
     if (text.isNotEmpty) {
       widget.onSendMessage(text);
       _textController.clear();
@@ -230,10 +263,11 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
 
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
-        if (widget.onSendImageBytes != null) {
-          widget.onSendImageBytes!(bytes);
-        } else if (!kIsWeb) {
-          widget.onSendImage(File(pickedFile.path));
+        if (mounted) {
+          setState(() {
+            _pendingImageBytes = bytes;
+          });
+          _focusNode.requestFocus();
         }
       }
     } catch (e) {
@@ -336,7 +370,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
                       color: AppColors.coralDanger,
                       onTap: () {
                         Navigator.pop(context);
-                        _showLocationDialog();
+                        _handleLocationOption();
                       },
                     ),
                     _buildActionOption(
@@ -371,6 +405,145 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     );
   }
 
+  Future<void> _handleLocationOption() async {
+    final bool? shouldShareReal = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2235),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.my_location_rounded, color: AppColors.coralDanger, size: 26),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Chia sẻ vị trí thực tế',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'SupaChat muốn truy cập vị trí thực tế của bạn qua GPS để gửi toạ độ và địa chỉ chính xác vào đoạn chat.',
+              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Bạn có đồng ý cho phép định vị và chia sẻ vị trí thật không?',
+              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Hủy', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogCtx, null);
+            },
+            child: const Text('Chọn địa điểm mẫu', style: TextStyle(color: AppColors.electricBlue)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            icon: const Icon(Icons.check_circle_rounded, size: 18),
+            label: const Text('Cho phép & Chia sẻ', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (shouldShareReal == true) {
+      await _locateAndSendRealPosition();
+    } else if (shouldShareReal == null) {
+      _showLocationDialog();
+    }
+  }
+
+  Future<void> _locateAndSendRealPosition() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (loadingCtx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E2235),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: const Row(
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Đang định vị GPS...',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Vui lòng chọn Cho phép nếu trình duyệt hiển thị thông báo quyền vị trí.',
+                      style: TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final result = await GeolocationHelper.getCurrentLocation();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      widget.onSendLocation?.call(
+        result.locationName,
+        result.address,
+        result.latitude,
+        result.longitude,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 Đã chia sẻ vị trí thực tế: ${result.locationName}'),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể lấy vị trí: $errorMsg'),
+          backgroundColor: AppColors.coralDanger,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   void _showLocationDialog() {
     final places = [
       {'name': 'Hồ Gươm (Hà Nội)', 'address': 'Hoàn Kiếm, Hà Nội', 'lat': 21.0285, 'lng': 105.8542},
@@ -396,6 +569,69 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
               ],
             ),
             const SizedBox(height: 14),
+            InkWell(
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleLocationOption();
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.white24,
+                      child: Icon(Icons.my_location_rounded, color: Colors.white),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Chia sẻ vị trí GPS thực tế',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              SizedBox(width: 6),
+                              Icon(Icons.bolt_rounded, color: Colors.amber, size: 16),
+                            ],
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Xác định toạ độ chính xác từ thiết bị của bạn',
+                            style: TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Hoặc chọn địa điểm mẫu:',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+            ),
+            const SizedBox(height: 6),
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
@@ -468,6 +704,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
   @override
   void dispose() {
     ClipboardImageHelper.dispose();
+    _focusNode.dispose();
     _recordTimer?.cancel();
     _typingTimer?.cancel();
     _textController.removeListener(_handleTextChange);
@@ -486,11 +723,91 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     final actionBg = isDark ? AppColors.darkSecondary : AppColors.lightLavender;
 
     final hasText = _textController.text.trim().isNotEmpty;
+    final hasContent = hasText || _pendingImageBytes != null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (_showEmojiPanel) _buildEmojiPanel(isDark, textPrimary, textSecondary),
+
+        // Khung xem trước hình ảnh đính kèm chờ gửi (khi dán hoặc chọn ảnh)
+        if (_pendingImageBytes != null)
+          Container(
+            color: barBg,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(
+                        _pendingImageBytes!,
+                        width: 68,
+                        height: 68,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: -6,
+                      right: -6,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _pendingImageBytes = null;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.black87,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.image_rounded, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Đã đính kèm ảnh',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Nhấn Enter hoặc nút Gửi để gửi ảnh đi',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
 
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -540,6 +857,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
                               Expanded(
                                 child: TextField(
                                   controller: _textController,
+                                  focusNode: _focusNode,
                                   maxLines: 4,
                                   minLines: 1,
                                   textInputAction: TextInputAction.send,
@@ -598,7 +916,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
 
                       const SizedBox(width: 8),
 
-                      // Nút Gửi (hoặc Mic ghi âm Voice Note nếu chưa có text)
+                      // Nút Gửi (hoặc Mic ghi âm Voice Note nếu chưa có text và ảnh)
                       widget.isSending
                           ? const SizedBox(
                               width: 40,
@@ -612,21 +930,21 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                gradient: hasText ? AppColors.brandGradient : null,
-                                color: hasText ? null : actionBg,
+                                gradient: hasContent ? AppColors.brandGradient : null,
+                                color: hasContent ? null : actionBg,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: IconButton(
                                 padding: EdgeInsets.zero,
                                 icon: Icon(
-                                  hasText ? Icons.send_rounded : Icons.mic_rounded,
+                                  hasContent ? Icons.send_rounded : Icons.mic_rounded,
                                   size: 20,
-                                  color: hasText
+                                  color: hasContent
                                       ? Colors.white
                                       : (isDark ? AppColors.primaryLight : AppColors.primary),
                                 ),
-                                tooltip: hasText ? 'Gửi tin nhắn' : 'Ghi âm tin nhắn thoại (Voice)',
-                                onPressed: hasText ? _handleSend : _startRecording,
+                                tooltip: hasContent ? 'Gửi tin nhắn' : 'Ghi âm tin nhắn thoại (Voice)',
+                                onPressed: hasContent ? _handleSend : _startRecording,
                               ),
                             ),
                     ],
