@@ -301,6 +301,32 @@ class AuthProvider with ChangeNotifier {
 
       await _saveLocalUserProfile(_currentUserModel!);
 
+      // Tự động đồng bộ ảnh đại diện mới vào toàn bộ bài viết đã đăng của người dùng
+      try {
+        final postsQuery = await AppFirestore.instance
+            .collection('posts')
+            .where('authorId', isEqualTo: uid)
+            .get();
+        for (final doc in postsQuery.docs) {
+          doc.reference.update({'authorAvatar': downloadUrl});
+        }
+      } catch (e) {
+        debugPrint('Lỗi đồng bộ avatar vào posts: $e');
+      }
+
+      // Tự động đồng bộ ảnh đại diện mới vào toàn bộ tin (story) đã đăng của người dùng
+      try {
+        final storiesQuery = await AppFirestore.instance
+            .collection('stories')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in storiesQuery.docs) {
+          doc.reference.update({'userAvatar': downloadUrl});
+        }
+      } catch (e) {
+        debugPrint('Lỗi đồng bộ avatar vào stories: $e');
+      }
+
       _setLoading(false);
       notifyListeners();
       return true;
@@ -341,6 +367,27 @@ class AuthProvider with ChangeNotifier {
         if (_currentUserModel != null) {
           await _saveLocalUserProfile(_currentUserModel!);
         }
+
+        // Đồng bộ xóa avatar trên toàn bộ bài viết và story đã đăng
+        try {
+          final postsQuery = await AppFirestore.instance
+              .collection('posts')
+              .where('authorId', isEqualTo: uid)
+              .get();
+          for (final doc in postsQuery.docs) {
+            doc.reference.update({'authorAvatar': null});
+          }
+        } catch (_) {}
+
+        try {
+          final storiesQuery = await AppFirestore.instance
+              .collection('stories')
+              .where('userId', isEqualTo: uid)
+              .get();
+          for (final doc in storiesQuery.docs) {
+            doc.reference.update({'userAvatar': null});
+          }
+        } catch (_) {}
       }
       _setLoading(false);
       notifyListeners();

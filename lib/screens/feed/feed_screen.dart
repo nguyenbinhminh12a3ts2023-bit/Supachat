@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/locale_provider.dart';
@@ -39,6 +40,53 @@ class _FeedScreenState extends State<FeedScreen> {
   final StoryService _storyService = StoryService();
   final ChatService _chatService = ChatService();
   final FriendService _friendService = FriendService();
+
+  StreamSubscription? _usersSub;
+  Map<String, String?> _userAvatarsById = {};
+  Map<String, String?> _userAvatarsByName = {};
+  Map<String, String> _userNamesById = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToUserProfiles();
+  }
+
+  void _listenToUserProfiles() {
+    _usersSub = FirebaseFirestore.instance.collection('users').snapshots().listen((snapshot) {
+      final Map<String, String?> avatarsById = {};
+      final Map<String, String?> avatarsByName = {};
+      final Map<String, String> namesById = {};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final uid = doc.id;
+        final photoUrl = data['photoUrl'] as String?;
+        final displayName = (data['displayName'] as String?)?.trim();
+        if (photoUrl != null && photoUrl.isNotEmpty) {
+          avatarsById[uid] = photoUrl;
+          if (displayName != null && displayName.isNotEmpty) {
+            avatarsByName[displayName.toLowerCase()] = photoUrl;
+          }
+        }
+        if (displayName != null && displayName.isNotEmpty) {
+          namesById[uid] = displayName;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _userAvatarsById = avatarsById;
+          _userAvatarsByName = avatarsByName;
+          _userNamesById = namesById;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _usersSub?.cancel();
+    super.dispose();
+  }
 
   void _showSharePostSheet(BuildContext context, PostModel post) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -330,12 +378,17 @@ class _FeedScreenState extends State<FeedScreen> {
                       separatorBuilder: (_, _) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final comment = comments[index];
+                        final commentAvatar = _userAvatarsById[comment.authorId] ??
+                            _userAvatarsByName[comment.authorName.trim().toLowerCase()] ??
+                            comment.authorAvatar;
+                        final commentName = _userNamesById[comment.authorId] ?? comment.authorName;
+
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             AvatarWidget(
-                              photoUrl: comment.authorAvatar,
-                              name: comment.authorName,
+                              photoUrl: commentAvatar,
+                              name: commentName,
                               radius: 18,
                             ),
                             const SizedBox(width: 10),
@@ -353,7 +406,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          comment.authorName,
+                                          commentName,
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 13,
@@ -1012,8 +1065,10 @@ class _FeedScreenState extends State<FeedScreen> {
                     : null,
               ),
               child: AvatarWidget(
-                photoUrl: displayStory.userAvatar,
-                name: displayStory.userName,
+                photoUrl: _userAvatarsById[displayStory.userId] ??
+                    _userAvatarsByName[displayStory.userName.trim().toLowerCase()] ??
+                    displayStory.userAvatar,
+                name: _userNamesById[displayStory.userId] ?? displayStory.userName,
                 radius: 28,
               ),
             ),
@@ -1021,7 +1076,7 @@ class _FeedScreenState extends State<FeedScreen> {
             SizedBox(
               width: 64,
               child: Text(
-                displayStory.userName,
+                _userNamesById[displayStory.userId] ?? displayStory.userName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -1039,7 +1094,21 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _navigateToAuthorProfile(PostModel post) {
-    final currentUserId = Provider.of<AuthProvider>(context, listen: false).firebaseUser?.uid;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = authProvider.currentUserModel?.uid ?? authProvider.firebaseUser?.uid;
+
+    String? resolvedAvatar = _userAvatarsById[post.authorId];
+    if (resolvedAvatar == null || resolvedAvatar.isEmpty) {
+      resolvedAvatar = _userAvatarsByName[post.authorName.trim().toLowerCase()];
+    }
+    if (resolvedAvatar == null || resolvedAvatar.isEmpty) {
+      resolvedAvatar = post.authorAvatar;
+    }
+    if (post.authorId == currentUserId && authProvider.currentUserModel?.photoUrl != null) {
+      resolvedAvatar = authProvider.currentUserModel!.photoUrl;
+    }
+    final resolvedName = _userNamesById[post.authorId] ?? post.authorName;
+
     if (post.authorId == currentUserId) {
       Navigator.push(
         context,
@@ -1048,9 +1117,9 @@ class _FeedScreenState extends State<FeedScreen> {
     } else {
       final authorUser = UserModel(
         uid: post.authorId,
-        displayName: post.authorName,
+        displayName: resolvedName,
         email: '',
-        photoUrl: post.authorAvatar,
+        photoUrl: resolvedAvatar,
         bio: 'Thành viên SupaChat',
         createdAt: DateTime.now(),
       );
@@ -1073,6 +1142,25 @@ class _FeedScreenState extends State<FeedScreen> {
     final isLiked = post.isLikedBy(currentUserId);
     final hasMusic = post.musicTrackUrl != null && post.musicTrackUrl!.isNotEmpty;
 
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    String? resolvedAvatar = _userAvatarsById[post.authorId];
+    if (resolvedAvatar == null || resolvedAvatar.isEmpty) {
+      resolvedAvatar = _userAvatarsByName[post.authorName.trim().toLowerCase()];
+    }
+    if (resolvedAvatar == null || resolvedAvatar.isEmpty) {
+      resolvedAvatar = post.authorAvatar;
+    }
+    if (post.authorId == currentUserId && authProvider.currentUserModel?.photoUrl != null) {
+      resolvedAvatar = authProvider.currentUserModel!.photoUrl;
+    }
+
+    final resolvedAuthorName = _userNamesById[post.authorId] ?? post.authorName;
+
+    // Tự động đồng bộ vĩnh viễn vào Firestore bài viết nếu phát hiện avatar mới
+    if (resolvedAvatar != null && resolvedAvatar.isNotEmpty && post.authorAvatar != resolvedAvatar) {
+      _postService.syncPostAuthorAvatar(post.id, resolvedAvatar);
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -1091,8 +1179,8 @@ class _FeedScreenState extends State<FeedScreen> {
                 GestureDetector(
                   onTap: () => _navigateToAuthorProfile(post),
                   child: AvatarWidget(
-                    photoUrl: post.authorAvatar,
-                    name: post.authorName,
+                    photoUrl: resolvedAvatar,
+                    name: resolvedAuthorName,
                     radius: 20,
                   ),
                 ),
@@ -1104,7 +1192,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          post.authorName,
+                          resolvedAuthorName,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,

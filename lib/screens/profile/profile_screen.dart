@@ -824,21 +824,27 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                AvatarWidget(photoUrl: post.authorAvatar, name: post.authorName, radius: 18),
-                const SizedBox(width: 10),
-                Text(post.authorName, style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.coralDanger, size: 20),
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await _postService.deletePost(post.id);
-                  },
-                ),
-              ],
-            ),
+            Builder(builder: (c) {
+              final authUser = Provider.of<AuthProvider>(c, listen: false).currentUserModel;
+              final currentAvatar = (post.authorId == authUser?.uid && authUser?.photoUrl != null)
+                  ? authUser!.photoUrl
+                  : post.authorAvatar;
+              return Row(
+                children: [
+                  AvatarWidget(photoUrl: currentAvatar, name: post.authorName, radius: 18),
+                  const SizedBox(width: 10),
+                  Text(post.authorName, style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppColors.coralDanger, size: 20),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _postService.deletePost(post.id);
+                    },
+                  ),
+                ],
+              );
+            }),
             if (post.imageUrl != null) ...[
               const SizedBox(height: 12),
               ClipRRect(

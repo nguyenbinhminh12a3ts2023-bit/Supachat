@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
 import '../../models/friend_request_model.dart';
 import '../../models/post_model.dart';
 import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
@@ -546,7 +548,13 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     children: [
                       Row(
                         children: [
-                          AvatarWidget(photoUrl: post.authorAvatar, name: post.authorName, radius: 18),
+                          Builder(builder: (c) {
+                            final authUser = Provider.of<AuthProvider>(c, listen: false).currentUserModel;
+                            final av = (post.authorId == authUser?.uid && authUser?.photoUrl != null)
+                                ? authUser!.photoUrl
+                                : post.authorAvatar;
+                            return AvatarWidget(photoUrl: av, name: post.authorName, radius: 18);
+                          }),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -648,7 +656,13 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                 children: [
                   Row(
                     children: [
-                      AvatarWidget(photoUrl: post.authorAvatar, name: post.authorName, radius: 16),
+                      Builder(builder: (c) {
+                        final authUser = Provider.of<AuthProvider>(c, listen: false).currentUserModel;
+                        final av = (post.authorId == authUser?.uid && authUser?.photoUrl != null)
+                            ? authUser!.photoUrl
+                            : post.authorAvatar;
+                        return AvatarWidget(photoUrl: av, name: post.authorName, radius: 16);
+                      }),
                       const SizedBox(width: 8),
                       Text(post.authorName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary)),
                     ],

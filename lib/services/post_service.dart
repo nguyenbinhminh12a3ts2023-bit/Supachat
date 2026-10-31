@@ -35,6 +35,13 @@ class PostService {
     }
   }
 
+  /// Đồng bộ cập nhật ảnh đại diện tác giả bài viết
+  Future<void> syncPostAuthorAvatar(String postId, String newAvatar) async {
+    try {
+      await _firestore.collection('posts').doc(postId).update({'authorAvatar': newAvatar});
+    } catch (_) {}
+  }
+
   /// Đăng bài viết mới lên bảng tin
   Future<String> createPost({
     required String content,
