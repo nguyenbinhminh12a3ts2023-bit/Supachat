@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Mô hình Bài viết (Post) trên Bảng tin SupaChat
 class PostModel {
@@ -82,6 +82,40 @@ class PostModel {
       'privacy': privacy,
       'createdAt': useServerTimestamp ? FieldValue.serverTimestamp() : Timestamp.fromDate(createdAt),
     };
+  }
+
+  PostModel copyWith({
+    String? id,
+    String? authorId,
+    String? authorName,
+    String? authorAvatar,
+    String? content,
+    String? imageUrl,
+    String? musicTrackId,
+    String? musicTrackTitle,
+    String? musicTrackArtist,
+    String? musicTrackUrl,
+    List<String>? likes,
+    int? commentsCount,
+    String? privacy,
+    DateTime? createdAt,
+  }) {
+    return PostModel(
+      id: id ?? this.id,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
+      content: content ?? this.content,
+      imageUrl: imageUrl ?? this.imageUrl,
+      musicTrackId: musicTrackId ?? this.musicTrackId,
+      musicTrackTitle: musicTrackTitle ?? this.musicTrackTitle,
+      musicTrackArtist: musicTrackArtist ?? this.musicTrackArtist,
+      musicTrackUrl: musicTrackUrl ?? this.musicTrackUrl,
+      likes: likes ?? this.likes,
+      commentsCount: commentsCount ?? this.commentsCount,
+      privacy: privacy ?? this.privacy,
+      createdAt: createdAt ?? this.createdAt,
+    );
   }
 }
 

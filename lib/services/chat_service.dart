@@ -36,6 +36,7 @@ class ChatService {
     required String text,
     MessageType type = MessageType.text,
     String? mediaUrl,
+    String? postId,
   }) async {
     final senderId = currentUserId;
     if (senderId == null) throw Exception('Người dùng chưa đăng nhập');
@@ -52,6 +53,7 @@ class ChatService {
       mediaUrl: mediaUrl,
       timestamp: now,
       isSeen: false,
+      postId: postId,
     );
 
     // 1. Lưu tin nhắn vào sub-collection 'messages' bên trong 'chat_rooms'

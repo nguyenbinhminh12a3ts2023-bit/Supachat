@@ -268,6 +268,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                     receiverId: friend.uid,
                                     text: '🔗 [Bài viết từ ${post.authorName}]: ${post.content}',
                                     mediaUrl: post.imageUrl,
+                                    postId: post.id,
                                   );
                                   if (mounted) {
                                     ScaffoldMessenger.of(this.context).showSnackBar(
@@ -276,6 +277,11 @@ class _FeedScreenState extends State<FeedScreen> {
                                         backgroundColor: AppColors.tealAccent,
                                         behavior: SnackBarBehavior.floating,
                                       ),
+                                    );
+                                    // Dẫn tới bài viết trong đoạn chat với người bạn này luôn cho tiện
+                                    Navigator.push(
+                                      this.context,
+                                      MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: friend)),
                                     );
                                   }
                                 },

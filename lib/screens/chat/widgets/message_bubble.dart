@@ -10,6 +10,7 @@ import '../../../services/translation_service.dart';
 import '../../../utils/download_helper.dart';
 import '../../../utils/voice_recorder_helper.dart';
 import '../../../widgets/avatar_widget.dart';
+import '../../../widgets/post_detail_modal.dart';
 
 /// Bong bóng hiển thị tin nhắn (văn bản, hình ảnh, vị trí, tệp tin, sticker, dịch thuật)
 class MessageBubble extends StatefulWidget {
@@ -397,6 +398,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                         _buildLocationContent(context)
                       else if (message.type == MessageType.file)
                         _buildFileContent(context, isDark)
+                      else if (message.postId != null || message.content.contains('[Bài viết'))
+                        _buildSharedPostCard(context, isDark, isMe)
                       else ...[
                         Text(
                           message.content,
@@ -870,6 +873,184 @@ class _MessageBubbleState extends State<MessageBubble> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSharedPostCard(BuildContext context, bool isDark, bool isMe) {
+    final msg = widget.message;
+    String authorName = 'Bài viết';
+    String postContent = msg.content;
+
+    if (msg.content.contains('[Bài viết từ ') && msg.content.contains(']: ')) {
+      final start = msg.content.indexOf('[Bài viết từ ') + '[Bài viết từ '.length;
+      final end = msg.content.indexOf(']: ');
+      if (end > start) {
+        authorName = msg.content.substring(start, end).trim();
+        postContent = msg.content.substring(end + ']: '.length).trim();
+      }
+    } else if (msg.content.contains('🔗 [Bài viết]: ')) {
+      postContent = msg.content.replaceFirst('🔗 [Bài viết]: ', '').trim();
+    }
+
+    final hasImage = msg.mediaUrl != null && msg.mediaUrl!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () {
+        PostDetailModal.show(
+          context,
+          postId: msg.postId,
+          fallbackAuthor: authorName,
+          fallbackContent: postContent,
+          fallbackImage: msg.mediaUrl,
+        );
+      },
+      child: Container(
+        width: 260,
+        decoration: BoxDecoration(
+          color: isMe
+              ? Colors.white.withValues(alpha: 0.15)
+              : (isDark ? const Color(0xFF1E2130) : Colors.white),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isMe ? Colors.white.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: huy hiệu bài viết + tên tác giả
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isMe
+                    ? Colors.black.withValues(alpha: 0.15)
+                    : AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.article_rounded,
+                    size: 15,
+                    color: isMe ? Colors.white : AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Bài viết từ $authorName',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isMe ? Colors.white : AppColors.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 11,
+                    color: isMe ? Colors.white.withValues(alpha: 0.8) : AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+
+            // Ảnh thu nhỏ nếu có
+            if (hasImage)
+              ClipRRect(
+                child: _buildSafePostImage(msg.mediaUrl!, height: 140),
+              ),
+
+            // Nội dung bài viết tóm tắt
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                postContent,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.35,
+                  fontWeight: FontWeight.w500,
+                  color: isMe ? Colors.white : (isDark ? Colors.white : AppColors.textPrimary),
+                ),
+              ),
+            ),
+
+            // Footer thanh nhấn để xem
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: isMe
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : (isDark ? AppColors.darkBorder : AppColors.border),
+                    width: 0.6,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.open_in_new_rounded,
+                    size: 13,
+                    color: isMe ? Colors.white.withValues(alpha: 0.8) : AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Nhấn để xem bài viết chi tiết',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isMe ? Colors.white.withValues(alpha: 0.9) : AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSafePostImage(String url, {double height = 140}) {
+    if (url.startsWith('data:image')) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          height: height,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Container(
+            height: height,
+            color: AppColors.primary.withValues(alpha: 0.15),
+            child: const Icon(Icons.broken_image_rounded),
+          ),
+        );
+      } catch (_) {
+        return Container(
+          height: height,
+          color: AppColors.primary.withValues(alpha: 0.15),
+          child: const Icon(Icons.broken_image_rounded),
+        );
+      }
+    }
+    return Image.network(
+      url,
+      height: height,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => Container(
+        height: height,
+        color: AppColors.primary.withValues(alpha: 0.15),
+        child: const Icon(Icons.broken_image_rounded),
       ),
     );
   }

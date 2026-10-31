@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Loại tin nhắn: văn bản (text), hình ảnh (image), tệp tin (file), sticker, vị trí (location), cảnh báo chụp màn hình, bàn phím bảo mật, cuộc gọi thoại, tin nhắn thoại (voice)
 enum MessageType {
@@ -28,6 +28,7 @@ class MessageModel {
   final double? latitude;
   final double? longitude;
   final String? locationAddress;
+  final String? postId;
 
   MessageModel({
     required this.id,
@@ -43,6 +44,7 @@ class MessageModel {
     this.latitude,
     this.longitude,
     this.locationAddress,
+    this.postId,
   });
 
   /// Getter alias tương thích với giao diện cũ
@@ -111,6 +113,7 @@ class MessageModel {
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       if (locationAddress != null) 'locationAddress': locationAddress,
+      if (postId != null) 'postId': postId,
     };
   }
 
@@ -145,6 +148,7 @@ class MessageModel {
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       locationAddress: map['locationAddress'] as String?,
+      postId: map['postId'] as String?,
     );
   }
 }
