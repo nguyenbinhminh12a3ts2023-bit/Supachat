@@ -3,13 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/chat_room_model.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
+import 'firestore_helper.dart';
 
 /// Dịch vụ xử lý gửi/nhận tin nhắn thời gian thực và quản lý phòng chat Firestore
 class ChatService {
   final FirebaseFirestore? _customFirestore;
   final FirebaseAuth? _customAuth;
 
-  FirebaseFirestore get _firestore => _customFirestore ?? FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => _customFirestore ?? AppFirestore.instance;
   FirebaseAuth get _auth => _customAuth ?? FirebaseAuth.instance;
 
   ChatService({FirebaseFirestore? firestore, FirebaseAuth? auth})

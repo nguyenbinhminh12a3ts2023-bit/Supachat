@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'firestore_helper.dart';
 
 /// Service quản lý trạng thái "đang nhập..." (Typing Indicator) trong chat
 class TypingService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => AppFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? get currentUserId => _auth.currentUser?.uid;

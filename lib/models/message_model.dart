@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Loại tin nhắn: văn bản (text), hình ảnh (image), tệp tin (file), sticker, vị trí (location), cảnh báo chụp màn hình, bàn phím bảo mật, cuộc gọi thoại, tin nhắn thoại (voice)
 enum MessageType {

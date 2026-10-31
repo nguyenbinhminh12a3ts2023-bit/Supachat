@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Model thông tin người dùng trong ứng dụng SupaChat
 class UserModel {

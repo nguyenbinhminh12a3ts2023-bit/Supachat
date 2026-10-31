@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 /// Bảng màu chuẩn theo thiết kế Figma của SupaChat
 /// Tối: #10121C / #1B1E2C / Gradient Violet-Blue #6C5CE7 -> #4F8BFF

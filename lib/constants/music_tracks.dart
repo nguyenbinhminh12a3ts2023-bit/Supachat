@@ -1,4 +1,4 @@
-/// Model bài hát thật trong SupaChat
+﻿/// Model bài hát thật trong SupaChat
 class MusicTrack {
   final String id;
   final String title;

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Mô hình Bài viết (Post) trên Bảng tin SupaChat
 class PostModel {

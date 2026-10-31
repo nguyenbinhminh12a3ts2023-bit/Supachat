@@ -3,10 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../constants/music_tracks.dart';
 import '../models/post_model.dart';
+import 'firestore_helper.dart';
 
 /// Dịch vụ quản lý Bài viết (Post) & Bình luận (Comment)
 class PostService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => AppFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   static List<PostModel> cachedPosts = [];
@@ -60,8 +61,10 @@ class PostService {
     } catch (_) {}
 
     final now = DateTime.now();
+    final newId = 'post_${now.millisecondsSinceEpoch}_${user.uid.substring(0, 5)}';
+
     final post = PostModel(
-      id: '',
+      id: newId,
       authorId: user.uid,
       authorName: authorName,
       authorAvatar: authorAvatar,
@@ -76,32 +79,22 @@ class PostService {
       privacy: privacy,
       createdAt: now,
     );
-
-    final docRef = await _firestore
-        .collection('posts')
-        .add(post.toMap(useServerTimestamp: true))
-        .timeout(const Duration(seconds: 15));
 
     // Thêm ngay bài viết vào bộ nhớ tạm để hiển thị ngay lập tức không cần đợi
-    final newLocalPost = PostModel(
-      id: docRef.id,
-      authorId: user.uid,
-      authorName: authorName,
-      authorAvatar: authorAvatar,
-      content: content.trim(),
-      imageUrl: imageUrl,
-      musicTrackId: musicTrack?.id,
-      musicTrackTitle: musicTrack?.title,
-      musicTrackArtist: musicTrack?.artist,
-      musicTrackUrl: musicTrack?.audioUrl,
-      likes: const [],
-      commentsCount: 0,
-      privacy: privacy,
-      createdAt: now,
-    );
-    cachedPosts = [newLocalPost, ...cachedPosts.where((p) => p.id != docRef.id)];
+    cachedPosts = [post, ...cachedPosts.where((p) => p.id != newId)];
 
-    return docRef.id;
+    // Lưu lên Firestore với timeout an toàn 6 giây
+    try {
+      await _firestore
+          .collection('posts')
+          .doc(newId)
+          .set(post.toMap(useServerTimestamp: true))
+          .timeout(const Duration(seconds: 6));
+    } catch (e) {
+      debugPrint('Lưu ý đồng bộ Firestore post: $e');
+    }
+
+    return newId;
   }
 
   /// Thả tim / Bỏ tim bài viết

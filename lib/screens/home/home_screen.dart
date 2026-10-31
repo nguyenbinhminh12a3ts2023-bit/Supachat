@@ -41,6 +41,16 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedFilter = 0; // 0: Tất cả, 1: Chưa đọc, 2: Gần đây, 3: Nhóm
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<AuthProvider>(context, listen: false).fetchCurrentUserProfile();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

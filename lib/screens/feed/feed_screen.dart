@@ -1,4 +1,4 @@
-import '../../providers/locale_provider.dart';
+﻿import '../../providers/locale_provider.dart';
 import '../story/story_archive_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

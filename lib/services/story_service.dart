@@ -3,10 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../constants/music_tracks.dart';
 import '../models/story_model.dart';
+import 'firestore_helper.dart';
 
 /// Dịch vụ quản lý Tin 24h (Story)
 class StoryService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => AppFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   static List<StoryModel> cachedStories = [];

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
+import '../../services/firestore_helper.dart';
 import '../../services/friend_service.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/real_audio_call_screen.dart';
@@ -263,7 +264,7 @@ class _CallsScreenState extends State<CallsScreen> {
             // Danh sách cuộc gọi từ Firestore (Real calls collection)
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
+                stream: AppFirestore.instance
                     .collection('calls')
                     .orderBy('createdAt', descending: true)
                     .snapshots(),

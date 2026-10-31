@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 
 /// Widget hiển thị animation "đang nhập..." (3 chấm nhấp nhô)

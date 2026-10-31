@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'chat_service.dart';
+import 'firestore_helper.dart';
 
 /// Dịch vụ Cuộc gọi thoại THẬT kết nối 2 chiều qua Firestore Signaling
 class CallService {
@@ -9,7 +10,7 @@ class CallService {
   factory CallService() => _instance;
   CallService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => AppFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String? get currentUserId => _auth.currentUser?.uid;

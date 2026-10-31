@@ -5,14 +5,52 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
+import 'firestore_helper.dart';
 
 /// Dịch vụ xử lý đăng ký, đăng nhập, hồ sơ người dùng với Firebase Auth & Firestore
 class AuthService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => AppFirestore.instance;
   GoogleSignIn get _googleSignIn => GoogleSignIn(
     clientId: kIsWeb ? '725465702601-hqhh9hkmc539pfllr8b66u9dbdo5upjp.apps.googleusercontent.com' : null,
   );
+
+  /// Tự động đồng bộ tài khoản Auth sang Firestore để đảm bảo luôn tìm thấy và kết bạn được
+  Future<void> syncUserToFirestore(User user) async {
+    try {
+      final docRef = _firestore.collection('users').doc(user.uid);
+      final doc = await docRef.get().timeout(const Duration(seconds: 6));
+      final displayName = (user.displayName != null && user.displayName!.isNotEmpty)
+          ? user.displayName!
+          : (user.email?.split('@').first ?? 'Người dùng');
+
+      if (!doc.exists) {
+        final newUser = UserModel(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: displayName,
+          photoUrl: user.photoURL,
+          bio: null,
+          isOnline: true,
+          lastSeen: DateTime.now(),
+          createdAt: DateTime.now(),
+          role: (user.email ?? '').toLowerCase().contains('admin') ? 'admin' : 'user',
+        );
+        await docRef.set(newUser.toMap(), SetOptions(merge: true));
+      } else {
+        await docRef.set({
+          'isOnline': true,
+          'lastSeen': FieldValue.serverTimestamp(),
+          if (user.displayName != null && user.displayName!.isNotEmpty)
+            'displayName': user.displayName,
+          if (user.photoURL != null && user.photoURL!.isNotEmpty)
+            'photoUrl': user.photoURL,
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('Lưu ý đồng bộ user sang Firestore: $e');
+    }
+  }
 
   /// Lấy thông tin user hiện tại từ Firebase Auth
   User? get currentUser {

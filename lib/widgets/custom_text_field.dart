@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 /// Ô nhập liệu tùy biến chuẩn Material 3 cho SupaChat

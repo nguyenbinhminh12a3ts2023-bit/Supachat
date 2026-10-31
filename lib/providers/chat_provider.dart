@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/message_model.dart';
 import '../services/chat_service.dart';

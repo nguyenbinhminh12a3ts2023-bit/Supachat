@@ -3,10 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/friend_request_model.dart';
 import '../models/user_model.dart';
+import 'firestore_helper.dart';
 
 /// Dịch vụ xử lý Tìm kiếm, Lời mời kết bạn và Danh sách bạn bè trên Firestore
 class FriendService {
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => AppFirestore.instance;
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
   String? get currentUserId {

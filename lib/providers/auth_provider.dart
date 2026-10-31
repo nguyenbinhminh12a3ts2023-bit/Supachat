@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../services/firestore_helper.dart';
 
 /// Provider quản lý trạng thái xác thực và hồ sơ người dùng
 /// Có hỗ trợ lưu trữ cục bộ SharedPreferences vĩnh viễn (Local Persistence)
@@ -111,7 +112,7 @@ class AuthProvider with ChangeNotifier {
 
         // Tự động đồng bộ hồ sơ lên Firestore nếu tài khoản chưa có document (ví dụ: database mới tạo)
         try {
-          await FirebaseFirestore.instance
+          await AppFirestore.instance
               .collection('users')
               .doc(user.uid)
               .set(_currentUserModel!.toMap(), SetOptions(merge: true))
@@ -298,7 +299,7 @@ class AuthProvider with ChangeNotifier {
       if (uid != null) {
         try {
           await _authService.currentUser?.updatePhotoURL(null);
-          await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          await AppFirestore.instance.collection('users').doc(uid).update({
             'photoUrl': null,
           });
         } catch (e) {
@@ -405,7 +406,7 @@ class AuthProvider with ChangeNotifier {
     _currentUserModel = _currentUserModel!.copyWith(role: newRole);
     await _saveLocalUserProfile(_currentUserModel!);
     try {
-      await FirebaseFirestore.instance
+      await AppFirestore.instance
           .collection('users')
           .doc(_currentUserModel!.uid)
           .update({'role': newRole});
@@ -419,7 +420,7 @@ class AuthProvider with ChangeNotifier {
     _currentUserModel = _currentUserModel!.copyWith(isOnline: isOnline);
     await _saveLocalUserProfile(_currentUserModel!);
     try {
-      await FirebaseFirestore.instance
+      await AppFirestore.instance
           .collection('users')
           .doc(_currentUserModel!.uid)
           .update({'isOnline': isOnline, 'lastActive': FieldValue.serverTimestamp()});

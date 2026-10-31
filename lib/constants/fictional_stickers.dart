@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 /// Model Sticker Nhân vật hư cấu độc quyền SupaChat
 class FictionalSticker {

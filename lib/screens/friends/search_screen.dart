@@ -9,6 +9,7 @@ import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
+import '../../services/firestore_helper.dart';
 import '../../widgets/avatar_widget.dart';
 import '../chat/chat_screen.dart';
 
@@ -101,7 +102,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
       List<PostModel> postResults = [];
       try {
         final cleanTag = query.toLowerCase();
-        final postSnap = await FirebaseFirestore.instance
+        final postSnap = await AppFirestore.instance
             .collection('posts')
             .limit(50)
             .get();
@@ -405,7 +406,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
               : hasActiveResults
                   ? _buildSearchResultsList(isDark, cardBg, textPrimary, textSecondary, borderColor)
                   : _searchController.text.isNotEmpty && _lastQuery.isNotEmpty
-                      ? _buildEmptySearchState(textPrimary, textSecondary)
+                      ? _buildEmptySearchState(isDark, cardBg, textPrimary, textSecondary, borderColor)
                       : _buildDiscoveryFeed(isDark, cardBg, textPrimary, textSecondary, borderColor),
         ),
       ],
@@ -710,166 +711,224 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
               ],
             ),
           ),
-          if (isFriend)
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: AppColors.brandGradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 14),
-                    SizedBox(width: 6),
-                    Text(
-                      'Nhắn tin',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                color: AppColors.primaryLight,
+                tooltip: 'Nhắn tin trực tiếp',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              if (isFriend)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 14),
+                      SizedBox(width: 4),
+                      Text('Bạn bè', style: TextStyle(color: AppColors.accentGreen, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                )
+              else if (hasSentRequest)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSecondary : AppColors.lightLavender,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Đã gửi lời mời',
+                    style: TextStyle(color: textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () => _sendFriendRequest(targetUser),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.brandGradient,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ],
-                ),
-              ),
-            )
-          else if (hasSentRequest)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSecondary : AppColors.lightLavender,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'Đã gửi lời mời',
-                style: TextStyle(color: textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            )
-          else
-            GestureDetector(
-              onTap: () => _sendFriendRequest(targetUser),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: AppColors.brandGradient,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.person_add_rounded, color: Colors.white, size: 14),
-                    SizedBox(width: 6),
-                    Text(
-                      'Kết bạn',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_add_rounded, color: Colors.white, size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          'Kết bạn',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptySearchState(Color textPrimary, Color textSecondary) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+  Widget _buildEmptySearchState(
+    bool isDark,
+    Color cardBg,
+    Color textPrimary,
+    Color textSecondary,
+    Color borderColor,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Center(
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.search_off_rounded, size: 34, color: AppColors.primaryLight),
               ),
-              child: const Icon(Icons.search_off_rounded, size: 38, color: AppColors.primaryLight),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Không tìm thấy kết quả cho "$_lastQuery"',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Hãy thử tìm kiếm bằng Email chính xác của bạn bè (ví dụ: manh11725@gmail.com) hoặc Tên đầy đủ (ví dụ: Hoàng Duy Mạnh).',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 20),
-            // Hộp hướng dẫn kết nối bạn bè thông minh
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.25)),
+              const SizedBox(height: 14),
+              Text(
+                'Không tìm thấy kết quả cho "$_lastQuery"',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
               ),
-              child: Column(
+              const SizedBox(height: 6),
+              Text(
+                'Hãy kiểm tra lại từ khóa hoặc chọn trực tiếp bạn bè trong danh sách thành viên bên dưới:',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Danh sách tất cả người dùng thật trên hệ thống để người dùng bấm kết bạn hoặc nhắn tin ngay
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.people_alt_rounded, size: 18, color: AppColors.primaryLight),
+              const SizedBox(width: 8),
+              Text(
+                'Thành viên trên SupaChat',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textPrimary),
+              ),
+            ],
+          ),
+        ),
+        StreamBuilder<List<UserModel>>(
+          stream: _friendService.getSuggestedUsersStream(),
+          builder: (context, snapshot) {
+            final users = snapshot.data ?? [];
+            if (users.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: borderColor, width: 0.8),
+                ),
+                child: Center(
+                  child: Text(
+                    'Chưa có người dùng nào khác trực tuyến.',
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: users.map((u) {
+                return _buildUserCard(u, isDark, cardBg, textPrimary, textSecondary, borderColor);
+              }).toList(),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // Hộp hướng dẫn kết nối bạn bè thông minh
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.25)),
+          ),
+          child: Column(
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Bạn của bạn đã tạo tài khoản chưa?',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Để kết bạn & nhắn tin, bạn bè của bạn cần mở link web và bấm "Đăng ký" (hoặc "Đăng nhập Google") một lần để tạo tài khoản trên hệ thống.',
-                    style: TextStyle(fontSize: 12, color: textSecondary, height: 1.4),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.share_rounded, size: 16),
-                      label: const Text(
-                        'Sao chép link web để gửi cho bạn bè',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: () async {
-                        const link = 'https://supachat-n1523dthc7.web.app';
-                        try {
-                          await Clipboard.setData(const ClipboardData(text: link));
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Đã sao chép link: https://supachat-n1523dthc7.web.app. Hãy gửi link này cho bạn qua Zalo/Facebook nhé!'),
-                                backgroundColor: AppColors.accentGreen,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        } catch (_) {}
-                      },
+                  const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bạn của bạn chưa tạo tài khoản?',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textPrimary),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Gửi link web cho bạn bè để họ đăng ký hoặc đăng nhập một lần là có thể nhắn tin & gọi thoại ngay lập tức:',
+                style: TextStyle(fontSize: 12, color: textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.share_rounded, size: 16),
+                  label: const Text(
+                    'Sao chép link web gửi cho bạn bè',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () async {
+                    const link = 'https://supachat-n1523dthc7.web.app';
+                    try {
+                      await Clipboard.setData(const ClipboardData(text: link));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Đã sao chép link: https://supachat-n1523dthc7.web.app'),
+                            backgroundColor: AppColors.accentGreen,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (_) {}
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
