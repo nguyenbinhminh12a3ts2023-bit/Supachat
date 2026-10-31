@@ -11,8 +11,10 @@ import '../../services/auth_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
 import '../../services/firestore_helper.dart';
+import '../../services/story_service.dart';
 import '../../widgets/avatar_widget.dart';
 import '../chat/chat_screen.dart';
+import '../story/story_viewer_screen.dart';
 
 /// Màn hình Tìm kiếm & Khám phá chuẩn Design System Figma
 /// - Tìm kiếm người dùng thật theo Tên / Email / Handle (Debounced tự động tìm khi gõ)
@@ -711,12 +713,69 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                AvatarWidget(
-                  photoUrl: targetUser.photoUrl,
-                  name: targetUser.displayName,
-                  radius: 24,
-                  showOnlineStatus: true,
-                  isOnline: targetUser.isActuallyOnline,
+                Builder(
+                  builder: (ctx) {
+                    final now = DateTime.now();
+                    final userStories = StoryService.cachedStories.where((s) =>
+                        s.expiresAt.isAfter(now) &&
+                        (s.userId == targetUser.uid ||
+                         s.userName.trim().toLowerCase() == targetUser.displayName.trim().toLowerCase())
+                    ).toList();
+                    final hasStory = userStories.isNotEmpty;
+
+                    return GestureDetector(
+                      onTap: () async {
+                        var storiesToView = userStories;
+                        if (storiesToView.isEmpty) {
+                          final allStories = await StoryService().getActiveStories();
+                          storiesToView = allStories.where((s) =>
+                              s.userId == targetUser.uid ||
+                              s.userName.trim().toLowerCase() == targetUser.displayName.trim().toLowerCase()
+                          ).toList();
+                        }
+                        if (mounted) {
+                          if (storiesToView.isNotEmpty) {
+                            final authProv = Provider.of<AuthProvider>(context, listen: false);
+                            final myUid = authProv.currentUserModel?.uid ?? '';
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StoryViewerScreen(
+                                  stories: storiesToView,
+                                  currentUserId: myUid,
+                                ),
+                              ),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: hasStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+                        decoration: hasStory
+                            ? const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              )
+                            : null,
+                        child: AvatarWidget(
+                          photoUrl: targetUser.photoUrl,
+                          name: targetUser.displayName,
+                          radius: 24,
+                          showOnlineStatus: true,
+                          isOnline: targetUser.isActuallyOnline,
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(width: 14),
                 Expanded(

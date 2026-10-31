@@ -380,6 +380,11 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
           ),
           itemBuilder: (context, index) {
             final friend = filtered[index];
+            final now = DateTime.now();
+            final hasStory = StoryService.cachedStories.any((s) =>
+                s.expiresAt.isAfter(now) &&
+                (s.userId == friend.uid ||
+                 s.userName.trim().toLowerCase() == friend.displayName.trim().toLowerCase()));
             return ListTile(
               key: ValueKey(friend.uid),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -415,12 +420,25 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                     }
                   }
                 },
-                child: AvatarWidget(
-                  photoUrl: friend.photoUrl,
-                  name: friend.displayName,
-                  radius: 26,
-                  showOnlineStatus: true,
-                  isOnline: friend.isActuallyOnline,
+                child: Container(
+                  padding: hasStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+                  decoration: hasStory
+                      ? const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        )
+                      : null,
+                  child: AvatarWidget(
+                    photoUrl: friend.photoUrl,
+                    name: friend.displayName,
+                    radius: 26,
+                    showOnlineStatus: true,
+                    isOnline: friend.isActuallyOnline,
+                  ),
                 ),
               ),
               title: Text(

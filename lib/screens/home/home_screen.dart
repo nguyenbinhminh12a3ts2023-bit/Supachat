@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/locale_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/presence_service.dart';
+import '../../utils/notification_helper.dart';
 import '../../widgets/avatar_widget.dart';
 import '../../widgets/global_music_player_bar.dart';
 import '../chat/chat_screen.dart';
@@ -41,19 +44,159 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedFilter = 0; // 0: Tất cả, 1: Chưa đọc, 2: Gần đây, 3: Nhóm
 
+  StreamSubscription? _notificationsSub;
+  StreamSubscription? _chatRoomsSub;
+  int _unreadNotificationsCount = 0;
+  int _unreadMessagesCount = 0;
+  final Set<String> _seenNotificationIds = {};
+  DateTime _screenLoadedTime = DateTime.now();
+
+  // In-app Notification Banner state
+  Map<String, dynamic>? _activeBanner;
+  Timer? _bannerTimer;
+
   @override
   void initState() {
     super.initState();
     PresenceService().start();
+    _screenLoadedTime = DateTime.now();
+    requestBrowserNotificationPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Provider.of<AuthProvider>(context, listen: false).fetchCurrentUserProfile();
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        auth.fetchCurrentUserProfile();
+        final uid = auth.currentUserModel?.uid ?? auth.firebaseUser?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          _initNotificationListeners(uid);
+        }
       }
     });
   }
 
+  void _initNotificationListeners(String uid) {
+    _notificationsSub?.cancel();
+    _notificationsSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      final docs = snapshot.docs;
+      final unreadCount = docs.where((d) => d.data()['isRead'] == false).length;
+
+      // Kiểm tra có thông báo mới tinh xuất hiện không
+      for (final doc in docs) {
+        final data = doc.data();
+        final id = doc.id;
+        final isRead = data['isRead'] == true;
+        if (!isRead && !_seenNotificationIds.contains(id)) {
+          _seenNotificationIds.add(id);
+
+          final ts = data['createdAt'];
+          DateTime? created;
+          if (ts is Timestamp) created = ts.toDate();
+          if (created == null || created.isAfter(_screenLoadedTime.subtract(const Duration(seconds: 15)))) {
+            _triggerNotification(id, data);
+          }
+        }
+      }
+
+      setState(() {
+        _unreadNotificationsCount = unreadCount;
+      });
+    });
+
+    _chatRoomsSub?.cancel();
+    _chatRoomsSub = _chatService.getChatRoomsStream().listen((rooms) {
+      if (!mounted) return;
+      int totalUnread = 0;
+      for (final r in rooms) {
+        totalUnread += r.getUnreadCount(uid);
+      }
+      setState(() {
+        _unreadMessagesCount = totalUnread;
+      });
+    });
+  }
+
+  void _triggerNotification(String docId, Map<String, dynamic> data) {
+    final title = data['title'] as String? ?? 'SupaChat';
+    final body = data['body'] as String? ?? '';
+    final type = data['type'] as String? ?? 'general';
+
+    // 1. Âm thanh chuông báo
+    playNotificationBeep();
+
+    // 2. Thông báo trình duyệt (HTML5 Web)
+    showBrowserNotification(title, body);
+
+    // 3. Hiển thị Banner nổi trong ứng dụng
+    _bannerTimer?.cancel();
+    setState(() {
+      _activeBanner = {
+        'id': docId,
+        'title': title,
+        'body': body,
+        'type': type,
+        'senderId': data['senderId'],
+        'postId': data['postId'],
+      };
+    });
+
+    _bannerTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _activeBanner = null;
+        });
+      }
+    });
+  }
+
+  void _onBannerTap(Map<String, dynamic> banner, String currentUserId) async {
+    final id = banner['id'] as String?;
+    final type = banner['type'] as String?;
+    final senderId = banner['senderId'] as String?;
+
+    if (id != null && currentUserId.isNotEmpty) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .collection('notifications')
+            .doc(id)
+            .update({'isRead': true});
+      } catch (_) {}
+    }
+
+    setState(() {
+      _activeBanner = null;
+    });
+
+    if (type == 'new_message' && senderId != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(senderId).get();
+        if (userDoc.exists && mounted) {
+          final targetUser = UserModel.fromFirestore(userDoc);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
+          );
+          return;
+        }
+      } catch (_) {}
+      setState(() => _currentNavIndex = 1);
+    } else {
+      setState(() => _currentNavIndex = 0);
+    }
+  }
+
   @override
   void dispose() {
+    _notificationsSub?.cancel();
+    _chatRoomsSub?.cancel();
+    _bannerTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -194,29 +337,39 @@ class _HomeScreenState extends State<HomeScreen> {
     final border = isDark ? AppColors.darkBorder : AppColors.border;
     final activeColor = isDark ? AppColors.primaryLight : AppColors.primary;
     final inactiveColor = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUserId = authProvider.firebaseUser?.uid ?? '';
 
     return Scaffold(
       backgroundColor: bg,
-      body: IndexedStack(
-        index: _currentNavIndex,
+      body: Stack(
         children: [
-          // 0: Bảng tin (Feed & Stories)
-          FeedScreen(onNavigateToMessages: () => setState(() => _currentNavIndex = 1)),
+          IndexedStack(
+            index: _currentNavIndex,
+            children: [
+              // 0: Bảng tin (Feed & Stories)
+              FeedScreen(onNavigateToMessages: () => setState(() => _currentNavIndex = 1)),
 
-          // 1: Tin nhắn (Chats list)
-          _buildMessagesTab(currentUserId, isDark, authProvider),
+              // 1: Tin nhắn (Chats list)
+              _buildMessagesTab(currentUserId, isDark, authProvider),
 
-          // 2: Tạo bài viết mới (+)
-          CreatePostScreen(onPostSuccess: () => setState(() => _currentNavIndex = 0)),
+              // 2: Tạo bài viết mới (+)
+              CreatePostScreen(onPostSuccess: () => setState(() => _currentNavIndex = 0)),
 
-          // 3: Bạn bè (Friends & Discovery)
-          const FriendsListScreen(),
+              // 3: Bạn bè (Friends & Discovery)
+              const FriendsListScreen(),
 
-          // 4: Cài đặt (Settings)
-          const SettingsScreen(),
+              // 4: Cài đặt (Settings)
+              const SettingsScreen(),
+            ],
+          ),
+
+          // Banner thông báo nổi trong ứng dụng
+          if (_activeBanner != null)
+            _buildInAppBannerWidget(_activeBanner!, isDark, cardBg, textPrimary, textSecondary, currentUserId),
         ],
       ),
       bottomNavigationBar: _currentNavIndex == 2 ? null : SafeArea(
@@ -246,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  // Tab 0: Bảng tin
+                  // Tab 0: Bảng tin (có chấm đỏ khi có thông báo mới)
                   _buildFloatingNavItem(
                     index: 0,
                     icon: Icons.home_outlined,
@@ -254,9 +407,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: localeProvider.t('Bảng tin', 'Feed'),
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
+                    hasUnreadBadge: _unreadNotificationsCount > 0,
                   ),
 
-                  // Tab 1: Tin nhắn (with red dot)
+                  // Tab 1: Tin nhắn (có chấm đỏ khi có tin nhắn chưa đọc)
                   _buildFloatingNavItem(
                     index: 1,
                     icon: Icons.forum_outlined,
@@ -264,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: localeProvider.t('Tin nhắn', 'Messages'),
                     activeColor: activeColor,
                     inactiveColor: inactiveColor,
-                    hasUnreadBadge: true,
+                    hasUnreadBadge: _unreadMessagesCount > 0,
                   ),
 
                   // Tab 2: Tạo bài viết (+ Center Floating Gradient Button)
@@ -369,6 +523,115 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInAppBannerWidget(
+    Map<String, dynamic> banner,
+    bool isDark,
+    Color cardBg,
+    Color textPrimary,
+    Color textSecondary,
+    String currentUserId,
+  ) {
+    final type = banner['type'] as String? ?? '';
+    final title = banner['title'] as String? ?? 'SupaChat';
+    final body = banner['body'] as String? ?? '';
+
+    IconData icon;
+    Color iconColor;
+    if (type == 'like_post') {
+      icon = Icons.favorite_rounded;
+      iconColor = AppColors.coralDanger;
+    } else if (type == 'comment_post') {
+      icon = Icons.chat_bubble_rounded;
+      iconColor = AppColors.primary;
+    } else {
+      icon = Icons.message_rounded;
+      iconColor = Colors.blueAccent;
+    }
+
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E202C) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: iconColor.withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _onBannerTap(banner, currentUserId),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: iconColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            body,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, size: 18, color: textSecondary),
+                      onPressed: () {
+                        _bannerTimer?.cancel();
+                        setState(() => _activeBanner = null);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

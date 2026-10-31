@@ -656,17 +656,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       child: Container(
                         color: isDark ? AppColors.darkSurface : Colors.grey[200],
                         child: post.imageUrl != null
-                            ? (post.imageUrl!.startsWith('data:image')
-                                ? Image.memory(
-                                    base64Decode(post.imageUrl!.split(',').last),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
-                                  )
-                                : Image.network(
-                                    post.imageUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => const Icon(Icons.broken_image),
-                                  ))
+                            ? _buildSafePostImage(post.imageUrl!)
                             : Center(
                                 child: Padding(
                                   padding: const EdgeInsets.all(8),
@@ -753,14 +743,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.network(
-                              post.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: AppColors.primary.withValues(alpha: 0.15),
-                                child: const Icon(Icons.broken_image_rounded),
-                              ),
-                            ),
+                            _buildSafePostImage(post.imageUrl!),
                             Positioned(
                               bottom: 4,
                               right: 4,
@@ -793,6 +776,46 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSafePostImage(String url, {double? height, double? width, BoxFit fit = BoxFit.cover}) {
+    if (url.startsWith('data:image')) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          height: height,
+          width: width,
+          fit: fit,
+          errorBuilder: (_, _, _) => Container(
+            height: height,
+            width: width,
+            color: AppColors.primary.withValues(alpha: 0.15),
+            child: const Icon(Icons.broken_image_rounded),
+          ),
+        );
+      } catch (_) {
+        return Container(
+          height: height,
+          width: width,
+          color: AppColors.primary.withValues(alpha: 0.15),
+          child: const Icon(Icons.broken_image_rounded),
+        );
+      }
+    }
+    return Image.network(
+      url,
+      height: height,
+      width: width,
+      fit: fit,
+      errorBuilder: (_, _, _) => Container(
+        height: height,
+        width: width,
+        color: AppColors.primary.withValues(alpha: 0.15),
+        child: const Icon(Icons.broken_image_rounded),
       ),
     );
   }
@@ -849,19 +872,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: post.imageUrl!.startsWith('data:image')
-                    ? Image.memory(
-                        base64Decode(post.imageUrl!.split(',').last),
-                        height: 300,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.network(
-                        post.imageUrl!,
-                        height: 300,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
+                child: _buildSafePostImage(post.imageUrl!, height: 300, width: double.infinity),
               ),
             ],
             const SizedBox(height: 12),

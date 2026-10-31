@@ -99,12 +99,22 @@ class ChatService {
     }, SetOptions(merge: true));
 
     try {
-      final senderName = _auth.currentUser?.displayName ?? 'Một người bạn';
+      String senderName = _auth.currentUser?.displayName ?? 'Một người bạn';
+      try {
+        final senderDoc = await _firestore.collection('users').doc(senderId).get();
+        if (senderDoc.exists) {
+          final fetchedName = senderDoc.data()?['displayName'] as String?;
+          if (fetchedName != null && fetchedName.trim().isNotEmpty) {
+            senderName = fetchedName.trim();
+          }
+        }
+      } catch (_) {}
       await _firestore.collection('users').doc(receiverId).collection('notifications').add({
         'type': 'new_message',
         'title': senderName,
         'body': summaryText,
         'senderId': senderId,
+        'senderName': senderName,
         'createdAt': FieldValue.serverTimestamp(),
         'isRead': false,
       });

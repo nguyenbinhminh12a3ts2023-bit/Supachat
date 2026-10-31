@@ -4,8 +4,10 @@ import '../../../constants/app_colors.dart';
 import '../../../models/chat_room_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/story_service.dart';
 import '../../../widgets/avatar_widget.dart';
 import '../../chat/chat_screen.dart';
+import '../../story/story_viewer_screen.dart';
 
 /// Ô hiển thị một phòng chat trong danh sách gần đây chuẩn Figma
 class ChatTile extends StatelessWidget {
@@ -75,13 +77,71 @@ class ChatTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                // Avatar kèm chấm online
-                AvatarWidget(
-                  photoUrl: photoUrl,
-                  name: displayName,
-                  radius: 26,
-                  showOnlineStatus: true,
-                  isOnline: isOnline,
+                // Avatar kèm chấm online & vòng Story nếu có
+                Builder(
+                  builder: (ctx) {
+                    final now = DateTime.now();
+                    final userStories = StoryService.cachedStories.where((s) =>
+                        s.expiresAt.isAfter(now) &&
+                        (s.userId == otherUser?.uid ||
+                         (otherUser != null && s.userName.trim().toLowerCase() == otherUser.displayName.trim().toLowerCase()))
+                    ).toList();
+                    final hasStory = userStories.isNotEmpty;
+
+                    return GestureDetector(
+                      onTap: () async {
+                        if (otherUser == null) return;
+                        var storiesToView = userStories;
+                        if (storiesToView.isEmpty) {
+                          final allStories = await StoryService().getActiveStories();
+                          storiesToView = allStories.where((s) =>
+                              s.userId == otherUser.uid ||
+                              s.userName.trim().toLowerCase() == otherUser.displayName.trim().toLowerCase()
+                          ).toList();
+                        }
+                        if (context.mounted) {
+                          if (storiesToView.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StoryViewerScreen(
+                                  stories: storiesToView,
+                                  currentUserId: currentUserId,
+                                ),
+                              ),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChatScreen(receiverUser: otherUser),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: hasStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+                        decoration: hasStory
+                            ? const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              )
+                            : null,
+                        child: AvatarWidget(
+                          photoUrl: photoUrl,
+                          name: displayName,
+                          radius: 26,
+                          showOnlineStatus: true,
+                          isOnline: isOnline,
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(width: 14),

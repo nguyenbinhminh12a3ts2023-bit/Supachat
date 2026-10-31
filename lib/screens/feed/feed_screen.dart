@@ -21,6 +21,7 @@ import '../../widgets/avatar_widget.dart';
 import '../../models/user_model.dart';
 import '../profile/profile_screen.dart';
 import '../profile/user_profile_view_screen.dart';
+import '../chat/chat_screen.dart';
 import '../story/create_story_screen.dart';
 import '../story/story_viewer_screen.dart';
 import 'create_post_screen.dart';
@@ -708,14 +709,24 @@ class _FeedScreenState extends State<FeedScreen> {
                           // Nút Kho lưu trữ tin
                           _buildArchiveStoryCircle(isDark, textPrimary, textSecondary),
 
-                          // Các Story của bạn bè / người khác (Nhóm theo từng người riêng biệt chuẩn Instagram)
+                          // Các Story của bạn bè / người khác (Gom nhóm toàn bộ tin của cùng một người thành 1 ô chuẩn Instagram)
                           ...(() {
                             final Map<String, List<StoryModel>> storiesByUser = {};
                             for (final s in stories) {
-                              if (s.userId != currentUserId) {
-                                final key = s.userName.trim().toLowerCase();
-                                storiesByUser.putIfAbsent(key, () => []).add(s);
+                              if (s.userId == currentUserId) continue;
+
+                              // Tìm xem người này đã có trong map chưa (theo userId hoặc theo tên)
+                              String? matchedKey;
+                              for (final entry in storiesByUser.entries) {
+                                if (entry.value.any((item) =>
+                                    (item.userId.isNotEmpty && s.userId.isNotEmpty && item.userId == s.userId) ||
+                                    item.userName.trim().toLowerCase() == s.userName.trim().toLowerCase())) {
+                                  matchedKey = entry.key;
+                                  break;
+                                }
                               }
+                              final groupKey = matchedKey ?? (s.userId.isNotEmpty ? s.userId : s.userName.trim().toLowerCase());
+                              storiesByUser.putIfAbsent(groupKey, () => []).add(s);
                             }
                             return storiesByUser.values.map((userStories) {
                               final hasViewedAll = userStories.every((s) => s.viewers.contains(currentUserId));
@@ -1130,6 +1141,59 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
+  void _onAuthorAvatarTap(PostModel post, String? resolvedAvatar, String resolvedAuthorName, String currentUserId) async {
+    if (post.authorId == currentUserId) {
+      _navigateToAuthorProfile(post);
+      return;
+    }
+
+    final now = DateTime.now();
+    List<StoryModel> authorStories = StoryService.cachedStories.where((s) =>
+        s.expiresAt.isAfter(now) &&
+        (s.userId == post.authorId ||
+         s.userName.trim().toLowerCase() == resolvedAuthorName.trim().toLowerCase())
+    ).toList();
+
+    if (authorStories.isEmpty) {
+      final allStories = await _storyService.getActiveStories();
+      authorStories = allStories.where((s) =>
+          s.userId == post.authorId ||
+          s.userName.trim().toLowerCase() == resolvedAuthorName.trim().toLowerCase())
+      .toList();
+    }
+
+    if (!mounted) return;
+
+    if (authorStories.isNotEmpty) {
+      // Có đăng tin -> xem story
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StoryViewerScreen(
+            stories: authorStories,
+            currentUserId: currentUserId,
+          ),
+        ),
+      );
+    } else {
+      // Không đăng tin -> dẫn vào đoạn chat
+      final authorUser = UserModel(
+        uid: post.authorId,
+        displayName: resolvedAuthorName,
+        email: '',
+        photoUrl: resolvedAvatar,
+        bio: 'Thành viên SupaChat',
+        createdAt: DateTime.now(),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(receiverUser: authorUser),
+        ),
+      );
+    }
+  }
+
   Widget _buildPostCard(
     PostModel post,
     bool isDark,
@@ -1161,6 +1225,12 @@ class _FeedScreenState extends State<FeedScreen> {
       _postService.syncPostAuthorAvatar(post.id, resolvedAvatar);
     }
 
+    final now = DateTime.now();
+    final hasAuthorStory = StoryService.cachedStories.any((s) =>
+        s.expiresAt.isAfter(now) &&
+        (s.userId == post.authorId ||
+         s.userName.trim().toLowerCase() == resolvedAuthorName.trim().toLowerCase()));
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -1177,11 +1247,24 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () => _navigateToAuthorProfile(post),
-                  child: AvatarWidget(
-                    photoUrl: resolvedAvatar,
-                    name: resolvedAuthorName,
-                    radius: 20,
+                  onTap: () => _onAuthorAvatarTap(post, resolvedAvatar, resolvedAuthorName, currentUserId),
+                  child: Container(
+                    padding: hasAuthorStory ? const EdgeInsets.all(2.0) : EdgeInsets.zero,
+                    decoration: hasAuthorStory
+                        ? const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [AppColors.gradientStart, AppColors.gradientEnd],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          )
+                        : null,
+                    child: AvatarWidget(
+                      photoUrl: resolvedAvatar,
+                      name: resolvedAuthorName,
+                      radius: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),

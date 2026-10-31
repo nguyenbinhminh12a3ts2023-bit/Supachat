@@ -124,12 +124,24 @@ class PostService {
       // Tạo thông báo cho chủ bài viết
       final authorId = data['authorId'] as String?;
       if (authorId != null && authorId != userId) {
-        final myName = _auth.currentUser?.displayName ?? 'Một người dùng';
+        String myName = _auth.currentUser?.displayName ?? 'Một người dùng';
+        try {
+          final meDoc = await _firestore.collection('users').doc(userId).get();
+          if (meDoc.exists) {
+            final fetchedName = meDoc.data()?['displayName'] as String?;
+            if (fetchedName != null && fetchedName.trim().isNotEmpty) {
+              myName = fetchedName.trim();
+            }
+          }
+        } catch (_) {}
         try {
           await _firestore.collection('users').doc(authorId).collection('notifications').add({
             'type': 'like_post',
             'title': 'Lượt thích bài viết',
             'body': '$myName đã thả tim bài viết của bạn.',
+            'senderId': userId,
+            'senderName': myName,
+            'postId': postId,
             'createdAt': FieldValue.serverTimestamp(),
             'isRead': false,
           });
@@ -198,6 +210,24 @@ class PostService {
     });
 
     await batch.commit();
+
+    // Tạo thông báo cho chủ bài viết nếu người bình luận không phải chủ bài viết
+    try {
+      final postDoc = await _firestore.collection('posts').doc(postId).get();
+      final authorId = postDoc.data()?['authorId'] as String?;
+      if (authorId != null && authorId != user.uid) {
+        await _firestore.collection('users').doc(authorId).collection('notifications').add({
+          'type': 'comment_post',
+          'title': 'Bình luận mới',
+          'body': '$authorName đã bình luận: ${content.trim()}',
+          'senderId': user.uid,
+          'senderName': authorName,
+          'postId': postId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isRead': false,
+        });
+      }
+    } catch (_) {}
   }
 
   /// Luồng lấy danh sách bình luận của bài viết

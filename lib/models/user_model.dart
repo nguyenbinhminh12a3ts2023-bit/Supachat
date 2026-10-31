@@ -124,6 +124,8 @@ class UserModel {
     return UserModel.fromMap(data, doc.id);
   }
 
+  factory UserModel.fromFirestore(DocumentSnapshot doc) => UserModel.fromDocument(doc);
+
   /// Khởi tạo UserModel từ Map
   factory UserModel.fromMap(Map<String, dynamic> map, [String? id]) {
     DateTime parseDate(dynamic value) {
