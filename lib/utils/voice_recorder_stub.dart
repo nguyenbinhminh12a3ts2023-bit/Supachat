@@ -4,7 +4,13 @@ class VoiceRecorderHelper {
   static Future<bool> startRecording() async => false;
   static Future<String?> stopRecording() async => null;
   static void cancelRecording() {}
-  static void playAudio(String audioUrl, {VoidCallback? onEnded, VoidCallback? onPlayStateChanged}) {}
+  static void playAudio({
+    required String messageId,
+    required String audioUrl,
+    VoidCallback? onEnded,
+    VoidCallback? onPlayStateChanged,
+    VoidCallback? onSampleOldMessage,
+  }) {}
   static void stopAudio() {}
-  static bool isAudioPlaying(String audioUrl) => false;
+  static bool isMessagePlaying(String messageId) => false;
 }

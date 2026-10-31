@@ -7,8 +7,20 @@ class VoiceRecorderHelper {
   static Future<bool> startRecording() => vrec.VoiceRecorderHelper.startRecording();
   static Future<String?> stopRecording() => vrec.VoiceRecorderHelper.stopRecording();
   static void cancelRecording() => vrec.VoiceRecorderHelper.cancelRecording();
-  static void playAudio(String audioUrl, {VoidCallback? onEnded, VoidCallback? onPlayStateChanged}) =>
-      vrec.VoiceRecorderHelper.playAudio(audioUrl, onEnded: onEnded, onPlayStateChanged: onPlayStateChanged);
+  static void playAudio({
+    required String messageId,
+    required String audioUrl,
+    VoidCallback? onEnded,
+    VoidCallback? onPlayStateChanged,
+    VoidCallback? onSampleOldMessage,
+  }) =>
+      vrec.VoiceRecorderHelper.playAudio(
+        messageId: messageId,
+        audioUrl: audioUrl,
+        onEnded: onEnded,
+        onPlayStateChanged: onPlayStateChanged,
+        onSampleOldMessage: onSampleOldMessage,
+      );
   static void stopAudio() => vrec.VoiceRecorderHelper.stopAudio();
-  static bool isAudioPlaying(String audioUrl) => vrec.VoiceRecorderHelper.isAudioPlaying(audioUrl);
+  static bool isMessagePlaying(String messageId) => vrec.VoiceRecorderHelper.isMessagePlaying(messageId);
 }

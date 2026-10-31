@@ -692,7 +692,10 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   Widget _buildVoiceContent(BuildContext context, bool isDark) {
     final audioUrl = widget.message.mediaUrl ?? '';
-    final isPlaying = VoiceRecorderHelper.isAudioPlaying(audioUrl);
+    final messageId = widget.message.id.isNotEmpty
+        ? widget.message.id
+        : '${widget.message.timestamp.millisecondsSinceEpoch}_${widget.message.senderId}';
+    final isPlaying = VoiceRecorderHelper.isMessagePlaying(messageId);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -704,12 +707,25 @@ class _MessageBubbleState extends State<MessageBubble> {
               if (audioUrl.isNotEmpty) {
                 AudioPlayerService.instance.stopTrack();
                 VoiceRecorderHelper.playAudio(
-                  audioUrl,
+                  messageId: messageId,
+                  audioUrl: audioUrl,
                   onEnded: () {
                     if (mounted) setState(() {});
                   },
                   onPlayStateChanged: () {
                     if (mounted) setState(() {});
+                  },
+                  onSampleOldMessage: () {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đây là tin nhắn mẫu cũ từ phiên bản trước. Hãy bấm giữ Micro bên dưới để gửi tin nhắn thoại với giọng nói thật 100%!'),
+                          backgroundColor: Colors.orange,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    }
                   },
                 );
               }
