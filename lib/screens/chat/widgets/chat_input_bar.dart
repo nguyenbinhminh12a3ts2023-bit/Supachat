@@ -1,11 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../constants/app_colors.dart';
-import '../../../constants/fictional_stickers.dart';
+import '../../../utils/voice_recorder_helper.dart';
 import '../../../widgets/secure_keypad_sheet.dart';
 
 /// Thanh nhập tin nhắn bên dưới màn hình chat với:
@@ -61,10 +61,8 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
   int _recordSeconds = 0;
   Timer? _recordTimer;
 
-  // Tab controller cho Emoji vs Sticker Ảo
-  int _selectedPanelTab = 0; // 0: Emoji, 1: Sticker ảo
+  // Quản lý danh mục Emoji
   int _selectedEmojiCategory = 0;
-  int _selectedCharacterIndex = 0;
 
   // Danh mục Emoji đầy đủ
   static const List<Map<String, dynamic>> _emojiCategories = [
@@ -150,8 +148,22 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     }
   }
 
-  // --- Voice Message Handler ---
-  void _startRecording() {
+  // --- Voice Message Handler (Thu âm & Phát 100% Giọng nói thật từ Microphone) ---
+  Future<void> _startRecording() async {
+    final ok = await VoiceRecorderHelper.startRecording();
+    if (!ok) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vui lòng cho phép quyền Micro trên trình duyệt để thu âm giọng nói thật!'),
+            backgroundColor: AppColors.coralDanger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _isRecording = true;
       _recordSeconds = 0;
@@ -167,22 +179,34 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
 
   void _cancelRecording() {
     _recordTimer?.cancel();
+    VoiceRecorderHelper.cancelRecording();
     setState(() {
       _isRecording = false;
       _recordSeconds = 0;
     });
   }
 
-  void _sendRecording() {
+  Future<void> _sendRecording() async {
     _recordTimer?.cancel();
     final mins = (_recordSeconds ~/ 60).toString().padLeft(2, '0');
     final secs = (_recordSeconds % 60).toString().padLeft(2, '0');
     final durationStr = '$mins:$secs';
 
-    // URL âm thanh thực trực tuyến cho Voice note
-    const sampleVoiceUrl = 'https://archive.org/download/binh-yen-nhung-phut-giay-son-tung-m-tp/Binh%20Yen%20Nhung%20Phut%20Giay%20-%20Son%20Tung%20M%20TP.mp3';
+    final audioUrl = await VoiceRecorderHelper.stopRecording();
 
-    widget.onSendVoice?.call(sampleVoiceUrl, durationStr);
+    if (audioUrl != null && audioUrl.isNotEmpty) {
+      widget.onSendVoice?.call(audioUrl, durationStr);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thu được âm thanh. Hãy thử nói to hơn nhé!'),
+            backgroundColor: AppColors.coralDanger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
 
     setState(() {
       _isRecording = false;
@@ -273,12 +297,11 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
                     ),
                     _buildActionOption(
                       icon: Icons.emoji_emotions_rounded,
-                      label: 'Sticker ảo',
+                      label: 'Emoji',
                       color: Colors.orange,
                       onTap: () {
                         Navigator.pop(context);
                         setState(() {
-                          _selectedPanelTab = 1;
                           _showEmojiPanel = true;
                         });
                       },
@@ -460,7 +483,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (_showEmojiPanel) _buildUnifiedEmojiAndStickerPanel(isDark, textPrimary, textSecondary),
+        if (_showEmojiPanel) _buildEmojiPanel(isDark, textPrimary, textSecondary),
 
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -671,85 +694,18 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     );
   }
 
-  // --- Widget Unified Panel (Bộ Emoji & Bộ Sticker Ảo SupaChat) ---
-  Widget _buildUnifiedEmojiAndStickerPanel(bool isDark, Color textPrimary, Color textSecondary) {
+  // --- Widget Panel Emoji thuần túy (Theo danh mục) ---
+  Widget _buildEmojiPanel(bool isDark, Color textPrimary, Color textSecondary) {
     final panelBg = isDark ? AppColors.darkSurface : AppColors.surface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.border;
 
     return Container(
-      height: 290,
+      height: 270,
       decoration: BoxDecoration(
         color: panelBg,
         border: Border(top: BorderSide(color: borderCol)),
       ),
-      child: Column(
-        children: [
-          // Header chọn Tab: EMOJI vs STICKER ẢO
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: borderCol, width: 0.8)),
-            ),
-            child: Row(
-              children: [
-                _buildMainTabButton(
-                  title: 'Emoji phong phú',
-                  icon: '😃',
-                  isSelected: _selectedPanelTab == 0,
-                  onTap: () => setState(() => _selectedPanelTab = 0),
-                ),
-                const SizedBox(width: 10),
-                _buildMainTabButton(
-                  title: 'Sticker ảo SupaChat',
-                  icon: '🐱',
-                  isSelected: _selectedPanelTab == 1,
-                  onTap: () => setState(() => _selectedPanelTab = 1),
-                ),
-              ],
-            ),
-          ),
-
-          // Nội dung tab đã chọn
-          Expanded(
-            child: _selectedPanelTab == 0
-                ? _buildEmojiCategoryView(textPrimary, textSecondary)
-                : _buildFictionalStickerView(isDark, textPrimary, textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainTabButton({
-    required String title,
-    required String icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AppColors.textSecondary,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: _buildEmojiCategoryView(textPrimary, textSecondary),
     );
   }
 
@@ -844,114 +800,4 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     );
   }
 
-  // --- Tab 2: Sticker Ảo 5 Nhân Vật Hư Cấu SupaChat ---
-  Widget _buildFictionalStickerView(bool isDark, Color textPrimary, Color textSecondary) {
-    final characters = FictionalStickerLibrary.characters;
-    final activeChar = characters[_selectedCharacterIndex];
-
-    return Column(
-      children: [
-        // Thanh chọn nhân vật (Mèo Supa, Cáo Neon, Gấu Bơ, Thỏ Bông, Rồng Con)
-        Container(
-          height: 42,
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            itemCount: characters.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, idx) {
-              final char = characters[idx];
-              final isSelected = _selectedCharacterIndex == idx;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedCharacterIndex = idx),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected ? char.themeColor.withValues(alpha: 0.18) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected ? char.themeColor : Colors.transparent,
-                      width: 1.2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(char.icon, style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: 6),
-                      Text(
-                        char.name,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? char.themeColor : textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-
-        // Lưới Stickers của nhân vật đã chọn
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 1.15,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: activeChar.stickers.length,
-            itemBuilder: (context, idx) {
-              final st = activeChar.stickers[idx];
-              return InkWell(
-                onTap: () {
-                  setState(() => _showEmojiPanel = false);
-                  widget.onSendSticker?.call(st.emoji, '${st.characterName}: ${st.title}');
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: st.badgeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: st.badgeColor.withValues(alpha: 0.3)),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(st.emoji, style: const TextStyle(fontSize: 34)),
-                      const SizedBox(height: 4),
-                      Text(
-                        st.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                        ),
-                      ),
-                      Text(
-                        st.subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 9, color: textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 }

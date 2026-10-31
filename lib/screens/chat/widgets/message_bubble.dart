@@ -4,11 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../../constants/app_colors.dart';
-import '../../../constants/music_tracks.dart';
 import '../../../models/message_model.dart';
 import '../../../services/audio_player_service.dart';
 import '../../../services/translation_service.dart';
 import '../../../utils/download_helper.dart';
+import '../../../utils/voice_recorder_helper.dart';
 import '../../../widgets/avatar_widget.dart';
 
 /// Bong bóng hiển thị tin nhắn (văn bản, hình ảnh, vị trí, tệp tin, sticker, dịch thuật)
@@ -691,8 +691,8 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   Widget _buildVoiceContent(BuildContext context, bool isDark) {
-    final isPlaying = AudioPlayerService.instance.isPlaying &&
-        AudioPlayerService.instance.currentTrack?.audioUrl == widget.message.mediaUrl;
+    final audioUrl = widget.message.mediaUrl ?? '';
+    final isPlaying = VoiceRecorderHelper.isAudioPlaying(audioUrl);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -701,17 +701,17 @@ class _MessageBubbleState extends State<MessageBubble> {
         children: [
           GestureDetector(
             onTap: () {
-              final audioUrl = widget.message.mediaUrl;
-              if (audioUrl != null && audioUrl.isNotEmpty) {
-                final track = MusicTrack(
-                  id: 'voice_${widget.message.id}',
-                  title: 'Tin nhắn thoại',
-                  artist: widget.isMe ? 'Bạn' : 'Đối phương',
-                  audioUrl: audioUrl,
-                  coverUrl: '',
-                  duration: widget.message.text,
+              if (audioUrl.isNotEmpty) {
+                AudioPlayerService.instance.stopTrack();
+                VoiceRecorderHelper.playAudio(
+                  audioUrl,
+                  onEnded: () {
+                    if (mounted) setState(() {});
+                  },
+                  onPlayStateChanged: () {
+                    if (mounted) setState(() {});
+                  },
                 );
-                AudioPlayerService.instance.playTrack(track);
               }
             },
             child: Container(
@@ -734,14 +734,15 @@ class _MessageBubbleState extends State<MessageBubble> {
               Row(
                 children: List.generate(14, (i) {
                   final heights = [10, 18, 8, 22, 14, 26, 16, 20, 10, 24, 18, 14, 20, 12];
+                  final isHighlight = isPlaying && (i % 2 == 0);
                   return Container(
                     width: 3,
                     height: heights[i % heights.length].toDouble(),
                     margin: const EdgeInsets.symmetric(horizontal: 1.5),
                     decoration: BoxDecoration(
                       color: widget.isMe
-                          ? Colors.white.withValues(alpha: isPlaying ? 0.95 : 0.6)
-                          : AppColors.primary.withValues(alpha: isPlaying ? 0.95 : 0.5),
+                          ? (isHighlight ? Colors.white : Colors.white70)
+                          : (isHighlight ? AppColors.tealAccent : AppColors.primary),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   );
