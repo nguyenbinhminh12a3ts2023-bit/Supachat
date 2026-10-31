@@ -7,6 +7,7 @@ import '../../models/story_model.dart';
 import '../../models/user_model.dart';
 import '../../services/audio_player_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/chat_service.dart';
 import '../../services/story_service.dart';
 import '../../utils/download_helper.dart';
 import '../../widgets/avatar_widget.dart';
@@ -33,6 +34,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
   late int _currentIndex;
   late AnimationController _progressController;
   final StoryService _storyService = StoryService();
+  final TextEditingController _replyController = TextEditingController();
+  final Set<String> _likedStoryIds = {};
 
   @override
   void initState() {
@@ -58,6 +61,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     }
 
     final story = widget.stories[_currentIndex];
+    final myUid = widget.currentUserId.isNotEmpty ? widget.currentUserId : (_storyService.currentUserId ?? '');
+    if (story.isLikedBy(myUid)) {
+      _likedStoryIds.add(story.id);
+    }
 
     // Đánh dấu đã xem
     _storyService.markStoryAsViewed(story.id, widget.currentUserId);
@@ -113,6 +120,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
 
   @override
   void dispose() {
+    _replyController.dispose();
     _progressController.dispose();
     AudioPlayerService.instance.stopTrack();
     super.dispose();
@@ -202,6 +210,93 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
       }
     } else {
       _resume();
+    }
+  }
+
+  Future<void> _sendReplyToStory(StoryModel story, String text) async {
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) return;
+
+    _pause();
+    _replyController.clear();
+
+    final chatService = ChatService();
+    final storyPrefix = story.caption.isNotEmpty ? ' [Story: "${story.caption}"]' : ' [Story]';
+    final messageText = '💬 Đã phản hồi tin của bạn$storyPrefix: $cleanText';
+
+    try {
+      await chatService.sendMessage(
+        receiverId: story.userId,
+        text: messageText,
+        mediaUrl: story.imageUrl,
+      );
+    } catch (e) {
+      debugPrint('Lỗi gửi phản hồi story: $e');
+    }
+
+    final targetUser = await AuthService().getUserProfile(story.userId) ??
+        UserModel(
+          uid: story.userId,
+          displayName: story.userName,
+          email: '',
+          photoUrl: story.userAvatar,
+          createdAt: DateTime.now(),
+        );
+
+    if (mounted) {
+      AudioPlayerService.instance.stopTrack();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(receiverUser: targetUser),
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleHeartStory(StoryModel story) async {
+    final myUid = widget.currentUserId.isNotEmpty ? widget.currentUserId : (_storyService.currentUserId ?? '');
+    final wasLiked = _likedStoryIds.contains(story.id) || story.isLikedBy(myUid);
+    final nowLiked = !wasLiked;
+
+    setState(() {
+      if (nowLiked) {
+        _likedStoryIds.add(story.id);
+      } else {
+        _likedStoryIds.remove(story.id);
+      }
+    });
+
+    await _storyService.toggleLikeStory(story.id, myUid);
+
+    if (nowLiked) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã thả ❤️ cho tin của ${story.userName}!'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      final chatService = ChatService();
+      try {
+        await chatService.sendMessage(
+          receiverId: story.userId,
+          text: '❤️ Đã thả tim cho tin của bạn!',
+          mediaUrl: story.imageUrl,
+        );
+      } catch (_) {}
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đã bỏ thích tin của ${story.userName}.'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -691,6 +786,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                                   children: [
                                     Expanded(
                                       child: TextField(
+                                        controller: _replyController,
                                         onTap: () => _pause(),
                                         style: const TextStyle(color: Colors.white, fontSize: 14),
                                         decoration: const InputDecoration(
@@ -707,45 +803,49 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
                                           contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
                                           isDense: true,
                                         ),
-                                        onSubmitted: (val) {
-                                          _resume();
-                                          if (val.trim().isNotEmpty) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('Đã gửi phản hồi đến ${story.userName}'),
-                                                behavior: SnackBarBehavior.floating,
-                                              ),
-                                            );
-                                          }
-                                        },
+                                        onSubmitted: (val) => _sendReplyToStory(story, val),
                                       ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                                      tooltip: 'Gửi phản hồi',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () => _sendReplyToStory(story, _replyController.text),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
                             const SizedBox(width: 10),
-                            // Nút thả tim
-                            InkWell(
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Đã thả ❤️ cho tin của ${story.userName}!'),
-                                    behavior: SnackBarBehavior.floating,
+                            // Nút thả tim (Viền trong suốt khi chưa tim, đỏ hồng khi đã tim)
+                            Builder(
+                              builder: (ctx) {
+                                final isLiked = _likedStoryIds.contains(story.id) || story.isLikedBy(myUid);
+                                return InkWell(
+                                  onTap: () => _toggleHeartStory(story),
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: isLiked
+                                          ? AppColors.coralDanger.withValues(alpha: 0.25)
+                                          : Colors.white.withValues(alpha: 0.18),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isLiked ? AppColors.coralDanger : Colors.white24,
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                      color: isLiked ? AppColors.coralDanger : Colors.white,
+                                      size: 22,
+                                    ),
                                   ),
                                 );
                               },
-                              borderRadius: BorderRadius.circular(24),
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.18),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white24, width: 0.8),
-                                ),
-                                child: const Icon(Icons.favorite_rounded, color: AppColors.coralDanger, size: 22),
-                              ),
                             ),
                           ],
                         ),

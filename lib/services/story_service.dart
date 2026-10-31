@@ -202,6 +202,22 @@ class StoryService {
     } catch (_) {}
   }
 
+  /// Thả tim / Bỏ tim story
+  Future<void> toggleLikeStory(String storyId, String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      final docRef = _firestore.collection('stories').doc(storyId);
+      final doc = await docRef.get();
+      if (!doc.exists) return;
+      final likes = List<String>.from(doc.data()?['likes'] as List? ?? []);
+      if (likes.contains(userId)) {
+        await docRef.update({'likes': FieldValue.arrayRemove([userId])});
+      } else {
+        await docRef.update({'likes': FieldValue.arrayUnion([userId])});
+      }
+    } catch (_) {}
+  }
+
   /// Xóa story
   Future<void> deleteStory(String storyId) async {
     final user = _auth.currentUser;

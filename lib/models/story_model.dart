@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Mô hình Tin 24h (Story) của SupaChat
 class StoryModel {
@@ -22,6 +22,7 @@ class StoryModel {
   final DateTime createdAt;
   final DateTime expiresAt;
   final List<String> viewers;
+  final List<String> likes;
 
   const StoryModel({
     required this.id,
@@ -44,7 +45,10 @@ class StoryModel {
     required this.createdAt,
     required this.expiresAt,
     this.viewers = const [],
+    this.likes = const [],
   });
+
+  bool isLikedBy(String uid) => likes.contains(uid);
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
 
@@ -85,6 +89,7 @@ class StoryModel {
       createdAt: created,
       expiresAt: expires,
       viewers: List<String>.from(data['viewers'] as List? ?? []),
+      likes: List<String>.from(data['likes'] as List? ?? []),
     );
   }
 
@@ -109,6 +114,7 @@ class StoryModel {
       'createdAt': useServerTimestamp ? FieldValue.serverTimestamp() : Timestamp.fromDate(createdAt),
       'expiresAt': Timestamp.fromDate(expiresAt),
       'viewers': viewers,
+      'likes': likes,
     };
   }
 }
