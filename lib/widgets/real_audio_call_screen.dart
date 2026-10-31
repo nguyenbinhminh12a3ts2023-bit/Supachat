@@ -15,6 +15,8 @@ class RealAudioCallScreen extends StatefulWidget {
   final String otherUserId;
   final String otherUserName;
   final String? otherUserAvatar;
+  final String? callerName;
+  final String? callerAvatar;
   final bool isCaller;
 
   const RealAudioCallScreen({
@@ -23,10 +25,12 @@ class RealAudioCallScreen extends StatefulWidget {
     required this.otherUserId,
     required this.otherUserName,
     this.otherUserAvatar,
+    this.callerName,
+    this.callerAvatar,
     required this.isCaller,
   });
 
-  static Future<void> startNewCall({
+  static void startNewCall({
     required BuildContext context,
     String receiverId = '',
     String receiverName = '',
@@ -34,7 +38,7 @@ class RealAudioCallScreen extends StatefulWidget {
     String? callerName,
     String? callerAvatar,
     UserModel? callee,
-  }) async {
+  }) {
     final targetReceiverId = callee?.uid ?? receiverId;
     final targetReceiverName = callee?.displayName ?? receiverName;
     final targetReceiverAvatar = callee?.photoUrl ?? receiverAvatar;
@@ -43,36 +47,20 @@ class RealAudioCallScreen extends StatefulWidget {
     final resolvedCallerName = callerName ?? user?.displayName ?? 'Tôi';
     final resolvedCallerAvatar = callerAvatar ?? user?.photoURL;
 
-    try {
-      final callId = await CallService().startCall(
-        receiverId: targetReceiverId,
-        receiverName: targetReceiverName,
-        receiverAvatar: targetReceiverAvatar,
-        callerName: resolvedCallerName,
-        callerAvatar: resolvedCallerAvatar,
-      );
-
-      if (context.mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RealAudioCallScreen(
-              callId: callId,
-              otherUserId: targetReceiverId,
-              otherUserName: targetReceiverName,
-              otherUserAvatar: targetReceiverAvatar,
-              isCaller: true,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể bắt đầu cuộc gọi: $e')),
-        );
-      }
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RealAudioCallScreen(
+          callId: '',
+          otherUserId: targetReceiverId,
+          otherUserName: targetReceiverName,
+          otherUserAvatar: targetReceiverAvatar,
+          callerName: resolvedCallerName,
+          callerAvatar: resolvedCallerAvatar,
+          isCaller: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -88,16 +76,55 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   bool _isMuted = false;
   bool _isSpeaker = false;
   String _statusText = 'Đang đổ chuông...';
+  String _activeCallId = '';
 
   @override
   void initState() {
     super.initState();
-    _listenCallStatus();
+    _activeCallId = widget.callId;
     if (widget.isCaller) {
       CallRingtoneHelper.startRingbackTone();
+      if (_activeCallId.isEmpty) {
+        _initCallerCall();
+      } else {
+        _startSignaling();
+      }
+    } else {
+      _startSignaling();
     }
+  }
+
+  Future<void> _initCallerCall() async {
+    try {
+      final id = await _callService.startCall(
+        receiverId: widget.otherUserId,
+        receiverName: widget.otherUserName,
+        receiverAvatar: widget.otherUserAvatar,
+        callerName: widget.callerName ?? 'Tôi',
+        callerAvatar: widget.callerAvatar,
+      );
+      if (!mounted) return;
+      setState(() {
+        _activeCallId = id;
+      });
+      _startSignaling();
+    } catch (e) {
+      if (!mounted) return;
+      CallRingtoneHelper.stopAll();
+      setState(() {
+        _statusText = 'Không thể kết nối: $e';
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) Navigator.pop(context);
+      });
+    }
+  }
+
+  void _startSignaling() {
+    if (_activeCallId.isEmpty) return;
+    _listenCallStatus();
     RealCallAudioHelper.startCallSession(
-      callId: widget.callId,
+      callId: _activeCallId,
       isCaller: widget.isCaller,
       onConnectedChange: (connected) {
         if (mounted && connected && !_isConnected) {
@@ -113,7 +140,9 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
   }
 
   void _listenCallStatus() {
-    _callSub = _callService.listenToCall(widget.callId).listen((snapshot) {
+    if (_activeCallId.isEmpty) return;
+    _callSub?.cancel();
+    _callSub = _callService.listenToCall(_activeCallId).listen((snapshot) {
       if (!snapshot.exists || !mounted) return;
 
       final data = snapshot.data() as Map<String, dynamic>? ?? {};
@@ -165,11 +194,13 @@ class _RealAudioCallScreenState extends State<RealAudioCallScreen> {
     _callSub?.cancel();
     CallRingtoneHelper.stopAll();
     RealCallAudioHelper.endCallSession();
-    await _callService.endCall(
-      callId: widget.callId,
-      receiverId: widget.otherUserId,
-      durationSeconds: _seconds,
-    );
+    if (_activeCallId.isNotEmpty) {
+      await _callService.endCall(
+        callId: _activeCallId,
+        receiverId: widget.otherUserId,
+        durationSeconds: _seconds,
+      );
+    }
     if (mounted) Navigator.pop(context);
   }
 

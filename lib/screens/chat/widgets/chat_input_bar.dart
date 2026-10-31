@@ -514,14 +514,18 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     try {
       final result = await GeolocationHelper.getCurrentLocation();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
 
-      widget.onSendLocation?.call(
-        result.locationName,
-        result.address,
-        result.latitude,
-        result.longitude,
-      );
+      if (widget.onSendLocation != null) {
+        await widget.onSendLocation!(
+          result.locationName,
+          result.address,
+          result.latitude,
+          result.longitude,
+        );
+      }
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -650,14 +654,16 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
                     title: Text(p['name'] as String, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(p['address'] as String, style: const TextStyle(fontSize: 12)),
                     trailing: const Icon(Icons.send_rounded, color: AppColors.primary, size: 20),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(ctx);
-                      widget.onSendLocation?.call(
-                        p['name'] as String,
-                        p['address'] as String,
-                        p['lat'] as double,
-                        p['lng'] as double,
-                      );
+                      if (widget.onSendLocation != null) {
+                        await widget.onSendLocation!(
+                          p['name'] as String,
+                          p['address'] as String,
+                          p['lat'] as double,
+                          p['lng'] as double,
+                        );
+                      }
                     },
                   );
                 },

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:html' as html;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../services/firestore_helper.dart';
 
 class RealCallAudioHelper {
   static html.MediaStream? _localStream;
@@ -113,7 +114,7 @@ class RealCallAudioHelper {
         }
       });
 
-      final callRef = FirebaseFirestore.instance.collection('calls').doc(callId);
+      final callRef = AppFirestore.instance.collection('calls').doc(callId);
 
       // 4. Gửi ICE Candidates của bản thân lên Firestore
       _peerConnection!.addEventListener('icecandidate', (event) {

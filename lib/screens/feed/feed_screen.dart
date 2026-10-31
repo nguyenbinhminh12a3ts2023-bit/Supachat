@@ -13,6 +13,7 @@ import '../../models/story_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/audio_player_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/firestore_helper.dart';
 import '../../services/friend_service.dart';
 import '../../services/post_service.dart';
 import '../../services/story_service.dart';
@@ -54,7 +55,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _listenToUserProfiles() {
-    _usersSub = FirebaseFirestore.instance.collection('users').snapshots().listen((snapshot) {
+    _usersSub = AppFirestore.instance.collection('users').snapshots().listen((snapshot) {
       final Map<String, String?> avatarsById = {};
       final Map<String, String?> avatarsByName = {};
       final Map<String, String> namesById = {};
@@ -527,7 +528,7 @@ class _FeedScreenState extends State<FeedScreen> {
           minChildSize: 0.35,
           builder: (_, scrollCtrl) {
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
+              stream: AppFirestore.instance
                   .collection('users')
                   .doc(currentUserId)
                   .collection('notifications')
@@ -644,7 +645,7 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
         actions: [
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
+            stream: AppFirestore.instance
                 .collection('users')
                 .doc(currentUserId)
                 .collection('notifications')

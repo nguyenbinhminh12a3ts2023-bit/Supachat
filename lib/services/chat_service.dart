@@ -64,7 +64,7 @@ class ChatService {
         .collection('messages')
         .doc();
 
-    await messageRef.set(message.toMap(useServerTimestamp: true));
+    await messageRef.set(message.toMap(useServerTimestamp: false));
 
     // 2. Cập nhật thông tin tóm tắt ở document phòng chat cha
     final roomDocRef = _firestore.collection('chat_rooms').doc(roomId);
@@ -156,7 +156,7 @@ class ChatService {
         .collection('messages')
         .doc();
 
-    await messageRef.set(message.toMap(useServerTimestamp: true));
+    await messageRef.set(message.toMap(useServerTimestamp: false));
 
     final roomDocRef = _firestore.collection('chat_rooms').doc(roomId);
     await roomDocRef.set({
@@ -164,12 +164,34 @@ class ChatService {
       'participants': [senderId, receiverId],
       'lastMessage': '[Vị trí] $locationName',
       'lastMessageSenderId': senderId,
-      'lastMessageTime': FieldValue.serverTimestamp(),
+      'lastMessageTime': Timestamp.fromDate(now),
       'unreadCounts': {
         receiverId: FieldValue.increment(1),
         senderId: 0,
       },
     }, SetOptions(merge: true));
+
+    try {
+      String senderName = _auth.currentUser?.displayName ?? 'Một người bạn';
+      try {
+        final senderDoc = await _firestore.collection('users').doc(senderId).get();
+        if (senderDoc.exists) {
+          final fetchedName = senderDoc.data()?['displayName'] as String?;
+          if (fetchedName != null && fetchedName.trim().isNotEmpty) {
+            senderName = fetchedName.trim();
+          }
+        }
+      } catch (_) {}
+      await _firestore.collection('users').doc(receiverId).collection('notifications').add({
+        'type': 'new_message',
+        'title': senderName,
+        'body': '[Vị trí] $locationName',
+        'senderId': senderId,
+        'senderName': senderName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    } catch (_) {}
   }
 
   /// Gửi tin nhắn thoại (Voice message)
@@ -218,7 +240,7 @@ class ChatService {
         .collection('messages')
         .doc();
 
-    await messageRef.set(message.toMap(useServerTimestamp: true));
+    await messageRef.set(message.toMap(useServerTimestamp: false));
 
     final roomDocRef = _firestore.collection('chat_rooms').doc(roomId);
     await roomDocRef.set({
@@ -262,7 +284,7 @@ class ChatService {
         .collection('messages')
         .doc();
 
-    await messageRef.set(message.toMap(useServerTimestamp: true));
+    await messageRef.set(message.toMap(useServerTimestamp: false));
 
     final roomDocRef = _firestore.collection('chat_rooms').doc(roomId);
     await roomDocRef.set({
@@ -305,7 +327,7 @@ class ChatService {
         .collection('messages')
         .doc();
 
-    await messageRef.set(message.toMap(useServerTimestamp: true));
+    await messageRef.set(message.toMap(useServerTimestamp: false));
 
     final roomDocRef = _firestore.collection('chat_rooms').doc(roomId);
     await roomDocRef.set({

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
@@ -7,6 +6,7 @@ import '../constants/music_tracks.dart';
 import '../models/post_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/audio_player_service.dart';
+import '../services/firestore_helper.dart';
 import '../services/post_service.dart';
 import 'avatar_widget.dart';
 
@@ -34,7 +34,7 @@ class PostDetailModal extends StatefulWidget {
       } else {
         // 2. Tải từ Firestore
         try {
-          final doc = await FirebaseFirestore.instance.collection('posts').doc(postId).get();
+          final doc = await AppFirestore.instance.collection('posts').doc(postId).get();
           if (doc.exists) {
             targetPost = PostModel.fromFirestore(doc);
           }

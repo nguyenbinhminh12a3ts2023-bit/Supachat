@@ -8,6 +8,7 @@ import '../../models/chat_room_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/chat_service.dart';
+import '../../services/firestore_helper.dart';
 import '../../services/friend_service.dart';
 import '../../services/presence_service.dart';
 import '../../utils/notification_helper.dart';
@@ -75,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _initNotificationListeners(String uid) {
     _notificationsSub?.cancel();
-    _notificationsSub = FirebaseFirestore.instance
+    _notificationsSub = AppFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('notifications')
@@ -161,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (id != null && currentUserId.isNotEmpty) {
       try {
-        await FirebaseFirestore.instance
+        await AppFirestore.instance
             .collection('users')
             .doc(currentUserId)
             .collection('notifications')
@@ -176,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (type == 'new_message' && senderId != null) {
       try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(senderId).get();
+        final userDoc = await AppFirestore.instance.collection('users').doc(senderId).get();
         if (userDoc.exists && mounted) {
           final targetUser = UserModel.fromFirestore(userDoc);
           Navigator.push(

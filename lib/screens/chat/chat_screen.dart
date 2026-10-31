@@ -108,14 +108,25 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _sendLocation(String locationName, String address, double lat, double lng) {
-    _chatService.sendLocationMessage(
-      receiverId: widget.receiverUser.uid,
-      locationName: locationName,
-      address: address,
-      latitude: lat,
-      longitude: lng,
-    );
+  Future<void> _sendLocation(String locationName, String address, double lat, double lng) async {
+    try {
+      await _chatService.sendLocationMessage(
+        receiverId: widget.receiverUser.uid,
+        locationName: locationName,
+        address: address,
+        latitude: lat,
+        longitude: lng,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể chia sẻ vị trí: $e'),
+            backgroundColor: AppColors.coralDanger,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _sendFileBytes(String fileName, String fileSize, Uint8List bytes) async {
