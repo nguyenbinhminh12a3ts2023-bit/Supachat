@@ -37,8 +37,11 @@ class CallService {
       'callerName': callerName,
       'callerAvatar': callerAvatar ?? '',
       'receiverId': receiverId,
+      'calleeId': receiverId,
       'receiverName': receiverName,
+      'calleeName': receiverName,
       'receiverAvatar': receiverAvatar ?? '',
+      'calleeAvatar': receiverAvatar ?? '',
       'status': 'ringing', // 'ringing', 'accepted', 'declined', 'ended'
       'createdAt': FieldValue.serverTimestamp(),
     });

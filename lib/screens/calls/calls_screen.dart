@@ -279,7 +279,7 @@ class _CallsScreenState extends State<CallsScreen> {
                   final myCalls = docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     final callerId = data['callerId'] as String? ?? '';
-                    final calleeId = data['calleeId'] as String? ?? '';
+                    final calleeId = data['calleeId'] as String? ?? data['receiverId'] as String? ?? '';
                     return callerId == currentUserId || calleeId == currentUserId;
                   }).toList();
 
@@ -292,7 +292,7 @@ class _CallsScreenState extends State<CallsScreen> {
                     if (_selectedFilter == 1 && !isMissed) return false;
 
                     final callerName = data['callerName'] as String? ?? '';
-                    final calleeName = data['calleeName'] as String? ?? '';
+                    final calleeName = data['calleeName'] as String? ?? data['receiverName'] as String? ?? '';
                     final searchKeyword = _searchController.text.toLowerCase().trim();
 
                     if (searchKeyword.isNotEmpty &&
@@ -356,12 +356,14 @@ class _CallsScreenState extends State<CallsScreen> {
                       final data = filteredCalls[index].data() as Map<String, dynamic>;
                       final callerId = data['callerId'] as String? ?? '';
                       final isOutgoing = callerId == currentUserId;
-                      final otherId = isOutgoing ? (data['calleeId'] as String? ?? '') : callerId;
+                      final otherId = isOutgoing
+                          ? (data['calleeId'] as String? ?? data['receiverId'] as String? ?? '')
+                          : callerId;
                       final otherName = isOutgoing
-                          ? (data['calleeName'] as String? ?? 'Người dùng')
+                          ? (data['calleeName'] as String? ?? data['receiverName'] as String? ?? 'Người dùng')
                           : (data['callerName'] as String? ?? 'Người dùng');
                       final otherAvatar = isOutgoing
-                          ? (data['calleeAvatar'] as String?)
+                          ? (data['calleeAvatar'] as String? ?? data['receiverAvatar'] as String?)
                           : (data['callerAvatar'] as String?);
                       final status = data['status'] as String? ?? 'ended';
                       final isMissed = status == 'declined';
