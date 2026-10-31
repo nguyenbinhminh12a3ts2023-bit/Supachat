@@ -1,42 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 1. Hồ sơ người dùng: Cho phép mọi tài khoản đã đăng nhập tìm kiếm và xem trang cá nhân
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-    
-    // 2. Lời mời kết bạn
-    match /friend_requests/{requestId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // 3. Tin 24h (Stories)
-    match /stories/{storyId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // 4. Bảng tin (Posts) & Bình luận
-    match /posts/{postId} {
-      allow read, write: if request.auth != null;
-    }
-    match /comments/{commentId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // 5. Đoạn chat, tin nhắn & Trạng thái gõ phím
-    match /chats/{chatId}/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /typing/{typingId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // 6. Cuộc gọi thoại & Video
-    match /calls/{callId} {
-      allow read, write: if request.auth != null;
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
-
+// timestamp: 2026-10-31T12:24:00Z - force ruleset update

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +15,7 @@ import '../../widgets/custom_text_field.dart';
 import '../feed/create_post_screen.dart';
 import '../friends/friends_list_screen.dart';
 import '../settings/settings_screen.dart';
+import '../story/story_archive_screen.dart';
 
 /// Màn hình Hồ sơ cá nhân chuẩn Instagram / Facebook
 class ProfileScreen extends StatefulWidget {
@@ -511,6 +512,29 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                           ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Nút mở Kho lưu trữ tin (Story Archive)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isDark ? AppColors.primaryLight : AppColors.primary,
+                          side: BorderSide(color: (isDark ? AppColors.primaryLight : AppColors.primary).withValues(alpha: 0.35)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                        ),
+                        icon: const Icon(Icons.auto_stories_rounded, size: 18),
+                        label: const Text('Kho lưu trữ tin (Story Archive)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const StoryArchiveScreen()),
+                          );
+                        },
+                      ),
                     ),
 
                     const SizedBox(height: 16),

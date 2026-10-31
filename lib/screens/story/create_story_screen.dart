@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -525,7 +525,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       return;
     }
 
-        // Kiểm tra giới hạn 5 tin/ngày
+    final screenSize = MediaQuery.of(context).size;
+
+    // Kiểm tra giới hạn 5 tin/ngày
     final authProv = Provider.of<AuthProvider>(context, listen: false);
     final uid = authProv.currentUserModel?.uid;
     if (uid != null) {
@@ -544,7 +546,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       }
     }
 
-    final screenSize = MediaQuery.of(context).size;
     setState(() => _isUploading = true);
 
     try {

@@ -253,8 +253,9 @@ class AuthProvider with ChangeNotifier {
         await _authService.updateProfile(photoUrl: downloadUrl);
       } catch (e) {
         debugPrint('Tải ảnh đại diện qua storage lỗi, lưu base64: $e');
-        final b64 = base64Encode(bytes);
-        downloadUrl = 'data:image/png;base64,$b64';
+        final safeBytes = StorageService.compressToSafeJpeg(bytes, maxWidth: 240, quality: 80);
+        final b64 = base64Encode(safeBytes);
+        downloadUrl = 'data:image/jpeg;base64,$b64';
         try {
           await _authService.updateProfile(photoUrl: downloadUrl);
         } catch (_) {}

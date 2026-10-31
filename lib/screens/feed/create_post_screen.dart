@@ -1,11 +1,9 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
-import '../../constants/music_tracks.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/audio_player_service.dart';
 import '../../services/post_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/avatar_widget.dart';
@@ -26,7 +24,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final StorageService _storageService = StorageService();
 
   Uint8List? _selectedImageBytes;
-  MusicTrack? _selectedMusic;
   String _privacy = 'public'; // 'public' | 'friends'
   bool _isPosting = false;
 
@@ -58,124 +55,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         );
       }
     }
-  }
-
-  void _showMusicSelector() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1B1E2C),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.music_note_rounded, color: AppColors.primaryLight, size: 24),
-                  SizedBox(width: 8),
-                  Text(
-                    'Đính kèm bài hát vào bài viết',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: MusicTrackLibrary.tracks.length,
-                  separatorBuilder: (_, _) => const Divider(color: Colors.white12, height: 1),
-                  itemBuilder: (ctx, index) {
-                    final track = MusicTrackLibrary.tracks[index];
-                    final isPlayingThis = AudioPlayerService.instance.currentTrack?.id == track.id &&
-                        AudioPlayerService.instance.isPlaying;
-
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          track.coverUrl,
-                          width: 46,
-                          height: 46,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            width: 46,
-                            height: 46,
-                            color: AppColors.primary,
-                            child: const Icon(Icons.music_note, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        track.title,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(
-                        track.artist,
-                        style: const TextStyle(color: Colors.white60, fontSize: 12),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              isPlayingThis ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
-                              color: AppColors.primaryLight,
-                              size: 28,
-                            ),
-                            onPressed: () async {
-                              if (isPlayingThis) {
-                                await AudioPlayerService.instance.pauseTrack();
-                              } else {
-                                await AudioPlayerService.instance.playTrack(track);
-                              }
-                              setSheetState(() {});
-                            },
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _selectedMusic?.id == track.id ? AppColors.accentGreen : AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _selectedMusic = track;
-                              });
-                              Navigator.pop(ctx);
-                            },
-                            child: Text(_selectedMusic?.id == track.id ? 'Đã chọn' : 'Chọn'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   void _showPrivacySelector() {
@@ -280,7 +159,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       await _postService.createPost(
         content: content,
         imageUrl: imageUrl,
-        musicTrack: _selectedMusic,
         privacy: _privacy,
       );
 
@@ -295,7 +173,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _contentController.clear();
         setState(() {
           _selectedImageBytes = null;
-          _selectedMusic = null;
         });
 
         widget.onPostSuccess?.call();
@@ -468,62 +345,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Thẻ bài hát nếu được đính kèm
-                    if (_selectedMusic != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(
-                                _selectedMusic!.coverUrl,
-                                width: 44,
-                                height: 44,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.music_note_rounded, size: 16, color: AppColors.primaryLight),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          _selectedMusic!.title,
-                                          style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary, fontSize: 14),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    _selectedMusic!.artist,
-                                    style: TextStyle(color: textSecondary, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.close_rounded, color: textSecondary, size: 20),
-                              onPressed: () => setState(() => _selectedMusic = null),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
                     // Xem trước ảnh nếu có
                     if (_selectedImageBytes != null) ...[
                       Stack(
@@ -555,103 +376,65 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
 
-            // Toolbar đính kèm phía dưới chuẩn Figma
+            // Toolbar đính kèm ảnh (Chỉ sử dụng hình ảnh)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: cardBg,
                 border: Border(top: BorderSide(color: borderColor, width: 0.8)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Thêm vào bài viết của bạn',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildAttachmentOption(
-                        icon: Icons.image_outlined,
-                        label: 'Ảnh / Video',
-                        color: AppColors.tealAccent,
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
                         onTap: _pickImage,
-                        textPrimary: textPrimary,
-                        isDark: isDark,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.tealAccent.withValues(alpha: isDark ? 0.15 : 0.08),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.tealAccent.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.tealAccent.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  color: AppColors.tealAccent,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                _selectedImageBytes != null
+                                    ? 'Đổi hình ảnh khác'
+                                    : 'Thêm hình ảnh vào bài viết',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      _buildAttachmentOption(
-                        icon: Icons.mic_none_rounded,
-                        label: 'Ghi âm',
-                        color: AppColors.coralDanger,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Tính năng ghi âm giọng nói đang bật.')),
-                          );
-                        },
-                        textPrimary: textPrimary,
-                        isDark: isDark,
-                      ),
-                      _buildAttachmentOption(
-                        icon: Icons.sentiment_satisfied_alt_outlined,
-                        label: 'Sticker',
-                        color: AppColors.primaryLight,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Mở bộ nhãn dán Supa Friends.')),
-                          );
-                        },
-                        textPrimary: textPrimary,
-                        isDark: isDark,
-                      ),
-                      _buildAttachmentOption(
-                        icon: Icons.music_note_rounded,
-                        label: 'Âm nhạc',
-                        color: AppColors.electricBlue,
-                        onTap: _showMusicSelector,
-                        textPrimary: textPrimary,
-                        isDark: isDark,
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttachmentOption({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-    required Color textPrimary,
-    required bool isDark,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Column(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: isDark ? 0.2 : 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: textPrimary),
             ),
           ],
         ),

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
@@ -126,27 +126,34 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
   }
 
   Widget _buildStoryImage(String url, Color bgColor) {
+    Widget imageWidget;
     if (url.startsWith('data:image')) {
       try {
         final base64Str = url.contains(',') ? url.split(',').last : url;
         final bytes = base64Decode(base64Str);
-        return Image.memory(
+        imageWidget = Image.memory(
           bytes,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          height: double.infinity,
-          errorBuilder: (_, __, ___) => _buildFallback(bgColor),
+          fit: BoxFit.contain,
+          errorBuilder: (_, error, stack) => _buildFallback(bgColor),
         );
       } catch (_) {
         return _buildFallback(bgColor);
       }
+    } else {
+      imageWidget = Image.network(
+        url,
+        fit: BoxFit.contain,
+        errorBuilder: (_, error, stack) => _buildFallback(bgColor),
+      );
     }
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
+
+    return Container(
+      color: Colors.black,
       width: double.infinity,
       height: double.infinity,
-      errorBuilder: (_, __, ___) => _buildFallback(bgColor),
+      child: Center(
+        child: imageWidget,
+      ),
     );
   }
 

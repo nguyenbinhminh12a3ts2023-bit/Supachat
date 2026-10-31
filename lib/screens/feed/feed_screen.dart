@@ -1,4 +1,4 @@
-﻿import '../../providers/locale_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../story/story_archive_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -281,6 +281,9 @@ class _FeedScreenState extends State<FeedScreen> {
                           // Vòng tròn Tin của bạn
                           _buildMyStoryCircle(myStories, isDark, textPrimary, textSecondary),
 
+                          // Nút Kho lưu trữ tin
+                          _buildArchiveStoryCircle(isDark, textPrimary, textSecondary),
+
                           // Các Story của bạn bè / người khác
                           ...stories.where((s) => s.userId != currentUserId).map((story) {
                             final hasViewed = story.viewers.contains(currentUserId);
@@ -524,6 +527,58 @@ class _FeedScreenState extends State<FeedScreen> {
                     color: textSecondary,
                   ),
                 ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArchiveStoryCircle(bool isDark, Color textPrimary, Color textSecondary) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(40),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StoryArchiveScreen()),
+              );
+            },
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark ? const Color(0xFF232534) : const Color(0xFFEEF2FF),
+                border: Border.all(
+                  color: isDark ? AppColors.primaryLight.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                Icons.auto_stories_rounded,
+                color: isDark ? AppColors.primaryLight : AppColors.primary,
+                size: 26,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: 68,
+            child: Text(
+              'Kho lưu trữ',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: textSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );

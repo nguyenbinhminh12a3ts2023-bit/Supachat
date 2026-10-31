@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/app_colors.dart';
@@ -923,7 +922,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                     const link = 'https://supachat-n1523dthc7.web.app';
                     try {
                       await Clipboard.setData(const ClipboardData(text: link));
-                      if (context.mounted) {
+                      if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Đã sao chép link: https://supachat-n1523dthc7.web.app'),

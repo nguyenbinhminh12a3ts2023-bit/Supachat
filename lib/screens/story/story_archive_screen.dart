@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_colors.dart';
@@ -8,9 +9,9 @@ import '../../providers/locale_provider.dart';
 import '../../services/story_service.dart';
 import 'story_viewer_screen.dart';
 
-/// MÃ n hÃ¬nh Kho lÆ°u trá»¯ tin (Story Archive)
-/// LÆ°u trá»¯ toÃ n bá»™ tin 24h cá»§a ngÆ°á»i dÃ¹ng theo thá»i gian
-/// Hiá»ƒn thá»‹ tin Ä‘ang hoáº¡t Ä‘á»™ng vÃ  tin Ä‘Ã£ lÆ°u trá»¯, cho phÃ©p xem láº¡i báº¥t cá»© lÃºc nÃ o
+/// Màn hình Kho lưu trữ tin (Story Archive)
+/// Lưu trữ toàn bộ tin 24h của người dùng theo thời gian
+/// Hiển thị tin đang phát và tin đã lưu trữ, cho phép xem lại bất cứ lúc nào
 class StoryArchiveScreen extends StatefulWidget {
   const StoryArchiveScreen({super.key});
 
@@ -30,6 +31,27 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
     } catch (_) {
       return AppColors.primary;
     }
+  }
+
+  Widget _buildStoryThumbnail(String url, Color bgColor) {
+    if (url.startsWith('data:image')) {
+      try {
+        final base64Str = url.contains(',') ? url.split(',').last : url;
+        final bytes = base64Decode(base64Str);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, stack) => Container(color: bgColor),
+        );
+      } catch (_) {
+        return Container(color: bgColor);
+      }
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, error, stack) => Container(color: bgColor),
+    );
   }
 
   @override
@@ -55,7 +77,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          localeProvider.t('Kho lÆ°u trá»¯ tin', 'Story Archive'),
+          localeProvider.t('Kho lưu trữ tin', 'Story Archive'),
           style: TextStyle(
             color: textPrimary,
             fontWeight: FontWeight.bold,
@@ -94,7 +116,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      localeProvider.t('Kho lÆ°u trá»¯ tin trá»‘ng', 'Story Archive is Empty'),
+                      localeProvider.t('Kho lưu trữ tin trống', 'Story Archive is Empty'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -104,7 +126,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                     const SizedBox(height: 8),
                     Text(
                       localeProvider.t(
-                        'CÃ¡c tin 24h báº¡n Ä‘Ã£ chia sáº» sáº½ Ä‘Æ°á»£c tá»± Ä‘á»™ng lÆ°u trá»¯ táº¡i Ä‘Ã¢y Ä‘á»ƒ báº¡n cÃ³ thá»ƒ xem láº¡i báº¥t ká»³ lÃºc nÃ o.',
+                        'Các tin 24h bạn đã chia sẻ sẽ được tự động lưu trữ tại đây để bạn có thể xem lại bất kỳ lúc nào.',
                         'Stories you share will be automatically archived here so you can review them anytime.',
                       ),
                       textAlign: TextAlign.center,
@@ -162,11 +184,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                     children: [
                       // Thumbnail
                       story.imageUrl != null && story.imageUrl!.isNotEmpty
-                          ? Image.network(
-                              story.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: bgColor),
-                            )
+                          ? _buildStoryThumbnail(story.imageUrl!, bgColor)
                           : Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -193,7 +211,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                               ),
                             ),
 
-                      // Gradient bÃ³ng má»
+                      // Gradient bóng mờ
                       Positioned.fill(
                         child: Container(
                           decoration: BoxDecoration(
@@ -211,7 +229,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                         ),
                       ),
 
-                      // Status Tag (Äang hoáº¡t Ä‘á»™ng / ÄÃ£ lÆ°u trá»¯)
+                      // Status Tag (Đang hoạt động / Đã lưu trữ)
                       Positioned(
                         top: 10,
                         left: 10,
@@ -225,8 +243,8 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                           ),
                           child: Text(
                             isExpired
-                                ? localeProvider.t('ÄÃ£ lÆ°u trá»¯', 'Archived')
-                                : localeProvider.t('Äang phÃ¡t', 'Active'),
+                                ? localeProvider.t('Đã lưu trữ', 'Archived')
+                                : localeProvider.t('Đang phát', 'Active'),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
@@ -236,7 +254,7 @@ class _StoryArchiveScreenState extends State<StoryArchiveScreen> {
                         ),
                       ),
 
-                      // Footer thÃ´ng tin (Thá»i gian, LÆ°á»£t xem)
+                      // Footer thông tin (Thời gian, Lượt xem)
                       Positioned(
                         bottom: 10,
                         left: 10,
