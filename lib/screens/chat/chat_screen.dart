@@ -340,7 +340,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
                         Text(
-                          '$statusText • [Micro Thật]',
+                          statusText,
                           style: TextStyle(
                             fontSize: 11,
                             color: isOnline
