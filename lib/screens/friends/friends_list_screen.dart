@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/friend_request_model.dart';
 import '../../models/user_model.dart';
@@ -107,17 +107,24 @@ class _FriendsListScreenState extends State<FriendsListScreen> {
                 ),
                 child: TextField(
                   controller: _searchController,
+                  readOnly: false,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SearchScreen(initialQuery: _searchController.text.trim()),
+                      ),
+                    );
+                  },
                   onChanged: (_) => setState(() {}),
                   textInputAction: TextInputAction.search,
                   onSubmitted: (query) {
-                    if (query.trim().isNotEmpty) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SearchScreen(initialQuery: query.trim()),
-                        ),
-                      );
-                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SearchScreen(initialQuery: query.trim()),
+                      ),
+                    );
                   },
                   style: TextStyle(fontSize: 14, color: textPrimary),
                   decoration: InputDecoration(

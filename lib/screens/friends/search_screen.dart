@@ -679,107 +679,118 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor, width: 0.8),
       ),
-      child: Row(
-        children: [
-          AvatarWidget(
-            photoUrl: targetUser.photoUrl,
-            name: targetUser.displayName,
-            radius: 24,
-            showOnlineStatus: true,
-            isOnline: targetUser.isOnline,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               children: [
-                Text(
-                  targetUser.displayName,
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: textPrimary),
+                AvatarWidget(
+                  photoUrl: targetUser.photoUrl,
+                  name: targetUser.displayName,
+                  radius: 24,
+                  showOnlineStatus: true,
+                  isOnline: targetUser.isOnline,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  targetUser.email.isNotEmpty ? targetUser.email : '@${targetUser.uid.substring(0, 8)}',
-                  style: TextStyle(color: textSecondary, fontSize: 12),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        targetUser.displayName,
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: textPrimary),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        targetUser.email.isNotEmpty ? targetUser.email : '@${targetUser.uid.substring(0, 8)}',
+                        style: TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark ? AppColors.darkSecondary : AppColors.lightLavender,
+                        foregroundColor: isDark ? Colors.white : AppColors.primary,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
+                      label: const Text('Nhắn tin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    if (isFriend)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentGreen.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.4)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 14),
+                            SizedBox(width: 4),
+                            Text('Bạn bè', style: TextStyle(color: AppColors.accentGreen, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      )
+                    else if (hasSentRequest)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSecondary : AppColors.lightLavender,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          'Đã gửi lời mời',
+                          style: TextStyle(color: textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      )
+                    else
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.person_add_rounded, size: 14),
+                        label: const Text('Kết bạn', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        onPressed: () => _sendFriendRequest(targetUser),
+                      ),
+                  ],
                 ),
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
-                color: AppColors.primaryLight,
-                tooltip: 'Nhắn tin trực tiếp',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ChatScreen(receiverUser: targetUser)),
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
-              if (isFriend)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.accentGreen.withValues(alpha: 0.4)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_rounded, color: AppColors.accentGreen, size: 14),
-                      SizedBox(width: 4),
-                      Text('Bạn bè', style: TextStyle(color: AppColors.accentGreen, fontSize: 12, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                )
-              else if (hasSentRequest)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSecondary : AppColors.lightLavender,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    'Đã gửi lời mời',
-                    style: TextStyle(color: textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                )
-              else
-                GestureDetector(
-                  onTap: () => _sendFriendRequest(targetUser),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.brandGradient,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.person_add_rounded, color: Colors.white, size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'Kết bạn',
-                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
